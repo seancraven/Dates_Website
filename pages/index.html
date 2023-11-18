@@ -15,13 +15,13 @@
       {% for date in dates %}
       <div id="date container">
         {{date.name}} 
-        <button hx-post="/date_button", hx-target="#result">
+        <button hx-post="/date_button_{{date.name}}", hx-target="#date container", hx-trigger="click">
           +
         </button>
         <button type="">
           -
         </button>
-        {{}}
+        {{date.count}}
       </div>
       {% endfor %}
     </div>
