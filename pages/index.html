@@ -5,13 +5,26 @@
     <script src="https://unpkg.com/htmx.org@1.9.6"
         integrity="sha384-FhXw7b6AlE/jyjlZH5iHa/tTe9EpJ1Y55RjcgPbjeWMskSxZt1v9qkxLJWNJaGni"
         crossorigin="anonymous"></script>
-    <link rel="stylesheet" href="/styles.css"/>
     <title>Dates Index</title>
 </head>
-
     <body>
         <div id="content">
         Dates Website
         </div>
+    <div>
+      {% for date in dates %}
+      <div id="date container">
+        {{date.name}} 
+        <button hx-post="/date_button", hx-target="#result">
+          +
+        </button>
+        <button type="">
+          -
+        </button>
+        {{}}
+      </div>
+      {% endfor %}
+    </div>
     </body>
+
 </html>
