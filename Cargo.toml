@@ -8,6 +8,8 @@ edition = "2021"
 [dependencies]
 actix-web = "4.4.0"
 anyhow = "1.0.75"
-serde = { version = "1.0.192", features = ["serde_derive"] }
+env_logger = "0.10.1"
+log = "0.4.20"
+serde = { version = "1.0.192", features = ["serde_derive", "derive"] }
 tera = "1.19.1"
 tokio = "1.34.0"

@@ -2,9 +2,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <script src="https://unpkg.com/htmx.org@1.9.6"
-        integrity="sha384-FhXw7b6AlE/jyjlZH5iHa/tTe9EpJ1Y55RjcgPbjeWMskSxZt1v9qkxLJWNJaGni"
-        crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.9" integrity="sha384-QFjmbokDn2DjBjq+fM+8LUIVrAgqcNW2s0PjAxHETgRn9l4fvX31ZxDxvwQnyMOX" crossorigin="anonymous"></script>
     <title>Dates Index</title>
 </head>
     <body>
@@ -13,18 +11,17 @@
         </div>
     <div>
       {% for date in dates %}
-      <div id="date container">
-        {{date.name}} 
-        <button hx-post="/date_button_{{date.name}}", hx-target="#date container", hx-trigger="click">
-          +
-        </button>
-        <button type="">
-          -
-        </button>
-        {{date.count}}
-      </div>
+      <div id="date_container_{{loop.index0}}">
+          {{date.name}} 
+        <button hx-get="/date_button/{{date.name}}/{{loop.index0}}", hx-target="#date_container_{{loop.index0}}", hx-trigger="click", hx-swap="outerHTML">
+            +
+          </button>
+        <button hx-post="/date_button/{{date.name}}/{{loop.index0}}", hx-target="#date_container_{{loop.index0}}", hx-trigger="click", hx-swap="outerHTML">
+            -
+          </button>
+          {{date.count}}
+        </div>
       {% endfor %}
     </div>
     </body>
-
 </html>

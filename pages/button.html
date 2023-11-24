@@ -1,0 +1,11 @@
+<div id="date_container_{{index}}">
+    {{date.name}} 
+  <button hx-get="/date_button/{{date.name}}/{{index}}", hx-target="#date_container_{{index}}", hx-trigger="click", hx-swap="outerHTML">
+      +
+    </button>
+  <button hx-post="/date_button/{{date.name}}/{{index}}", hx-target="#date_container_{{index}}", hx-trigger="click", hx-swap="outerHTML">
+        -
+    </button>
+    {{date.count}}
+  </div>
+

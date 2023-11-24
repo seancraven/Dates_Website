@@ -1,21 +1,59 @@
-use actix_web::{get, post, HttpResponse, Responder};
+use actix_web::web;
+use actix_web::{get, HttpResponse, Responder};
 use serde::Serialize;
 use std::fs::read;
-use tera::{self, Context};
+use std::sync::Mutex;
+use tera::{self, Context, Tera};
 
+type State = Mutex<DateRepo>;
 #[get("/")]
-async fn index() -> impl Responder {
-    let dates = vec![Date::new(String::from("placeholder")); 5];
-    HttpResponse::Ok().body(template_load(dates).expect("Templating failed."))
+async fn index(repo: web::Data<State>) -> impl Responder {
+    log::info!("Serving index page");
+    HttpResponse::Ok()
+        .body(template_load(repo.lock().unwrap().get_all()).expect("Templating failed."))
 }
 
+// #[derive(Deserialize, Debug, Serialize)]
+// struct DateInfo {
+//     name: String,
+// }
+
+#[get("/date_button/{date_info}/{index}")]
+async fn update_date(
+    date_info: web::Path<(String, usize)>,
+    app_state: web::Data<State>,
+) -> impl Responder {
+    let date_name = &date_info.0;
+    let idx = date_info.1;
+    log::info!("Date button pushed on: {:?}", &date_name);
+    match app_state.lock() {
+        Ok(mut repo) => {
+            // log::debug!("Responding with: {:?}", repo.get_all());
+            let mut ctx = Context::new();
+            ctx.insert("date", &repo.get(date_name).expect("Date doesnt exitst"));
+            ctx.insert("index", &idx);
+
+            let html = Tera::one_off(
+                std::str::from_utf8(
+                    &read("./pages/button.html").expect("File system read failed."),
+                )
+                .unwrap(),
+                &ctx,
+                false,
+            );
+            repo.update_count(date_name);
+            HttpResponse::Ok().body(html.unwrap())
+        }
+        Err(_) => HttpResponse::InternalServerError().finish(),
+    }
+}
 #[derive(Debug, Serialize, Clone)]
-struct Date {
+pub struct Date {
     name: String,
     count: usize,
 }
 impl Date {
-    fn new(name: String) -> Date {
+    pub fn new(name: String) -> Date {
         Date { name, count: 0 }
     }
     fn add(&mut self) {
@@ -26,20 +64,30 @@ impl Date {
 trait Repository {
     fn add(&mut self, date: Date);
     fn remove(&mut self, date: Date);
-    fn get(&self) -> Vec<Date>;
+    fn get_all(&self) -> Vec<Date>;
     fn update_count(&mut self, date_name: &str);
+    fn get(&self, date_name: &str) -> Option<Date>;
 }
 
-struct DateRepo {
-    dates: Vec<Date>,
+pub struct DateRepo {
+    pub dates: Vec<Date>,
 }
 impl Repository for DateRepo {
     fn add(&mut self, date: Date) {
         self.dates.push(date);
     }
-    fn get(&self) -> Vec<Date> {
+    fn get(&self, date_name: &str) -> Option<Date> {
+        for date in &self.dates {
+            if date.name == date_name {
+                return Some(date.clone());
+            }
+        }
+        None
+    }
+    fn get_all(&self) -> Vec<Date> {
         self.dates.clone()
     }
+
     fn update_count(&mut self, date_name: &str) {
         for _date in self.dates.iter_mut() {
             if &*_date.name == date_name {
