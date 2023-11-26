@@ -2,7 +2,7 @@ use crate::domain::repository::AppState;
 use actix_web::{get, HttpResponse, Responder};
 use tera::{Context, Tera};
 
-#[get("/")]
+#[get("")]
 pub async fn index(repo: AppState) -> impl Responder {
     log::info!("Serving index page");
     HttpResponse::Ok().body(template_load(repo).expect("Templating failed."))
