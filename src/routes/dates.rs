@@ -13,7 +13,7 @@ pub fn dates_service(cfg: &mut ServiceConfig) {
         .service(add_new_date);
 }
 
-#[get("/{date_info}/increment")]
+#[get("{date_info}/increment")]
 async fn date_count_increment(date_info: web::Path<String>, app_state: AppState) -> impl Responder {
     let date_name = &date_info;
     tracing::info!("Date button pushed on: {:?}", &date_name);
@@ -25,7 +25,7 @@ async fn date_count_increment(date_info: web::Path<String>, app_state: AppState)
         Err(_) => HttpResponse::InternalServerError().finish(),
     }
 }
-#[get("/{date_info}/decrement")]
+#[get("{date_info}/decrement")]
 async fn date_count_decrement(date_info: web::Path<String>, app_state: AppState) -> impl Responder {
     let date_name = &date_info;
     tracing::info!("Date button pushed on: {:?}", &date_name);
@@ -38,7 +38,7 @@ async fn date_count_decrement(date_info: web::Path<String>, app_state: AppState)
     }
 }
 
-#[post("/new_date")]
+#[post("new_date")]
 async fn add_new_date(
     new_date: web::Form<HashMap<String, String>>,
     app_state: AppState,
