@@ -18,7 +18,7 @@
         <p class="w-full">{{date.name}}</p>
         <button
           class="flex-no-shrink p-2 ml-4 mr-2 border-2 rounded hover:bg-emerald-100 text-grey border-grey hover:bg-grey"
-          hx-get="distributed_dates/dates/{{date.name}}/increment"
+          hx-get="distributed_dates/dates/{{date.id}}/increment"
           hx-target="#greater_dates"
           hx-trigger="click"
           hx-swap="outerHTML"
@@ -27,7 +27,7 @@
         </button>
         <button
           class="flex-no-shrink p-2 ml-4 mr-2 border-2 rounded hover:bg-red-100 text-grey border-grey hover:bg-grey"
-          hx-get="distributed_dates/dates/{{date.name}}/decrement"
+          hx-get="distributed_dates/dates/{{date.id}}/decrement"
           hx-target="#greater_dates"
           hx-trigger="click"
           hx-swap="outerHTML"

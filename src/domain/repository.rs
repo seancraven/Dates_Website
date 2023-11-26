@@ -2,6 +2,8 @@ use actix_web::web;
 use serde::Serialize;
 use std::sync::Mutex;
 
+use crate::routes::dates::date_count_increment;
+
 pub type AppState = web::Data<Mutex<Box<dyn Repository + Send + Sync>>>;
 /// Abstraction over storage, so that it can be in memory or persistent.
 pub trait Repository {
@@ -18,8 +20,8 @@ pub trait Repository {
     /// Return a mutable ref to date.
     ///
     /// * `date_name`:
-    fn get_mut(&mut self, date_name: &str) -> Option<&mut Date>;
-    fn get(&self, date_name: &str) -> Option<&Date>;
+    fn get_mut(&mut self, date_id: &uuid::Uuid) -> Option<&mut Date>;
+    fn get(&self, date_id: &uuid::Uuid) -> Option<&Date>;
 }
 #[derive(Debug, Serialize, Clone, PartialEq)]
 /// Date storage
@@ -29,10 +31,15 @@ pub trait Repository {
 pub struct Date {
     name: String,
     count: usize,
+    id: uuid::Uuid,
 }
 impl Date {
     pub fn new(name: String) -> Date {
-        Date { name, count: 0 }
+        Date {
+            name,
+            count: 0,
+            id: uuid::Uuid::new_v4(),
+        }
     }
     pub fn add(&mut self) {
         self.count += 1;
@@ -56,11 +63,11 @@ impl Repository for VecRepo {
     fn add(&mut self, date: Date) {
         self.dates.push(date);
     }
-    fn get_mut(&mut self, date_name: &str) -> Option<&mut Date> {
-        self.dates.iter_mut().find(|x| x.name == date_name)
+    fn get_mut(&mut self, date_id: &uuid::Uuid) -> Option<&mut Date> {
+        self.dates.iter_mut().find(|x| &x.id == date_id)
     }
-    fn get(&self, date_name: &str) -> Option<&Date> {
-        self.dates.iter().find(|x| x.name == date_name)
+    fn get(&self, date_id: &uuid::Uuid) -> Option<&Date> {
+        self.dates.iter().find(|x| &x.id == date_id)
     }
     fn get_all(&self) -> Vec<Date> {
         self.dates.clone()
