@@ -6,6 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+uuid = { version = "1.6.1", features = ["v4"] }
 actix-web = "4.4.0"
 anyhow = "1.0.75"
 env_logger = "0.10.1"
@@ -14,3 +15,4 @@ serde = { version = "1.0.192", features = ["serde_derive", "derive"] }
 tera = "1.19.1"
 tokio = "1.34.0"
 tracing = { version = "0.1.40", features = ["log"] }
+tracing-subscriber = "0.3.18"

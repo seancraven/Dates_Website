@@ -16,7 +16,7 @@ pub fn dates_service(cfg: &mut ServiceConfig) {
 #[get("/{date_info}/increment")]
 async fn date_count_increment(date_info: web::Path<String>, app_state: AppState) -> impl Responder {
     let date_name = &date_info;
-    log::info!("Date button pushed on: {:?}", &date_name);
+    tracing::info!("Date button pushed on: {:?}", &date_name);
     match app_state.lock() {
         Ok(mut repo) => {
             repo.get_mut(date_name).unwrap().add();
@@ -28,7 +28,7 @@ async fn date_count_increment(date_info: web::Path<String>, app_state: AppState)
 #[get("/{date_info}/decrement")]
 async fn date_count_decrement(date_info: web::Path<String>, app_state: AppState) -> impl Responder {
     let date_name = &date_info;
-    log::info!("Date button pushed on: {:?}", &date_name);
+    tracing::info!("Date button pushed on: {:?}", &date_name);
     match app_state.lock() {
         Ok(mut repo) => {
             repo.get_mut(date_name).unwrap().minus();
@@ -43,14 +43,15 @@ async fn add_new_date(
     new_date: web::Form<HashMap<String, String>>,
     app_state: AppState,
 ) -> impl Responder {
-    log::info!(
-        "New date added: {}",
+    let id = uuid::Uuid::new_v4();
+    tracing::info!(
+        "id: {} date added: {}",
+        id,
         new_date.get("new_date").unwrap_or(&String::from("Failed"))
     );
     match app_state.lock() {
         Ok(mut repo) => {
             repo.add(Date::new(new_date.get("new_date").unwrap().clone()));
-            // log::debug!("{:?}", repo.get_all());
             HttpResponse::Ok().body(render_buttons(repo.get_all()).unwrap())
         }
         Err(_) => HttpResponse::InternalServerError().finish(),
