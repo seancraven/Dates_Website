@@ -1,51 +1,61 @@
-<div id="greater_dates">
-  <div id="dates">
-    {% for date in dates %}
-    <div id="date_container_{{loop.index0}}">
-      {{date.name}}
-      <button
-        hx-get="/dates/{{date.name}}/increment"
-        ,
-        hx-target="#greater_dates"
-        ,
-        hx-trigger="click"
-        ,
-        hx-swap="outerHTML"
-      >
-        +
-      </button>
-      <button
-        hx-get="/dates/{{date.name}}/decrement"
-        ,
-        hx-target="#greater_dates"
-        ,
-        hx-trigger="click"
-        ,
-        hx-swap="outerHTML"
-      >
-        -
-      </button>
-      {{date.count}}
+<div
+  id="greater_dates"
+  ,
+  class="h-100 w-full flex items-center justify-center bg-teal-lightest font-sans"
+>
+  <div class="mb-4">
+    <div class="w-full flex items-center bg-teal-lightest font-sans mb-5">
+      <p class="w-full flex items-center justify-left">Date Name</p>
+      <p class="w-full flex items-center justify-center">Date Upvotes</p>
     </div>
-    {% endfor %}
-    <form id="date_add">
-      <input
-        name="new_date"
+    <div id="dates">
+      {% for date in dates %}
+      <div
+        id="date_container_{{loop.index0}}"
         ,
-        type="form-control"
-        placeholder="Enter Date Idea :)"
-      />
-      <button
-        hx-post="/dates/new_date"
-        ,
-        hx-target="#greater_dates"
-        ,
-        hx-trigger="click"
-        ,
-        hx-swap="outerHTML"
+        class="flex mb-4 items-center justify-left"
       >
-        add
-      </button>
-    </form>
+        <p class="w-full">{{date.name}}</p>
+        <button
+          class="flex-no-shrink p-2 ml-4 mr-2 border-2 rounded hover:bg-emerald-100 text-grey border-grey hover:bg-grey"
+          hx-get="distributed_dates/dates/{{date.name}}/increment"
+          hx-target="#greater_dates"
+          hx-trigger="click"
+          hx-swap="outerHTML"
+        >
+          +
+        </button>
+        <button
+          class="flex-no-shrink p-2 ml-4 mr-2 border-2 rounded hover:bg-red-100 text-grey border-grey hover:bg-grey"
+          hx-get="/distributed_dates/dates/{{date.name}}/decrement"
+          hx-target="#greater_dates"
+          hx-trigger="click"
+          hx-swap="outerHTML"
+        >
+          -
+        </button>
+        <p class="w-1/6">{{date.count}}</p>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="mt-4">
+      <form id="date_add">
+        <input
+          placeholder="Enter Date Idea &#x1F60D;"
+          type="text"
+          name="new_date"
+          class="shadow appearance-none border rounded py-2 px-3 mr-4 text-grey-darker"
+        />
+        <button
+          hx-post="distributed_dates/dates/new_date"
+          hx-target="#greater_dates"
+          hx-trigger="click"
+          hx-swap="outerHTML"
+          class="p-2 mr-2 border-2 rounded hover:bg-cyan-100 text-grey border-grey hover:bg-grey"
+        >
+          add
+        </button>
+      </form>
+    </div>
   </div>
 </div>
