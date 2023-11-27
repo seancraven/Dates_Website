@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO dates (id_1, id_2, name, count_ ) VALUES ($1, $2, $3, $4) RETURNING (id_1, id_2)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "row",
+        "type_info": "Record"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Numeric",
+        "Numeric",
+        "Varchar",
+        "Numeric"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "2eaf83e960c6528fd0a75e2c93b97d69ab01d493fd6129d085bcf2488299476b"
+}
