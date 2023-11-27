@@ -17,11 +17,11 @@ async fn main(
     let state = AppState::new(Box::new(VecRepo::new(vec![])));
     let config = move |cfg: &mut ServiceConfig| {
         cfg.service(
-            web::scope("/distributed_dates")
+            web::scope("/dates")
                 .wrap(actix_web::middleware::Logger::default())
                 .app_data(state.clone())
                 .service(index)
-                .service(web::scope("/dates").configure(dates_service)),
+                .configure(dates_service),
         );
     };
     Ok(config.into())
