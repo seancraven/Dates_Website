@@ -8,14 +8,13 @@ use domain::repository::{AppState, VecRepo};
 use routes::dates::dates_service;
 use routes::index::index;
 use shuttle_actix_web::ShuttleActixWeb;
-use std::sync::Mutex;
-
+use sqlx::PgPool;
 #[shuttle_runtime::main]
-async fn main() -> ShuttleActixWeb<impl FnOnce(&mut ServiceConfig) + Send + Clone + 'static> {
-    let state = AppState::new(Mutex::new(Box::new(VecRepo::new(vec![
-        // Date::new("Italian Resturant".into()),
-        // Date::new("Sexy Times".into()),
-    ]))));
+async fn main(
+    #[shuttle_shared_db::Postgres] pool: PgPool,
+) -> ShuttleActixWeb<impl FnOnce(&mut ServiceConfig) + Send + Clone + 'static> {
+    sqlx::migrate!().run(&pool).await.unwrap();
+    let state = AppState::new(Box::new(VecRepo::new(vec![])));
     let config = move |cfg: &mut ServiceConfig| {
         cfg.service(
             web::scope("/distributed_dates")

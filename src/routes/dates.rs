@@ -20,13 +20,8 @@ async fn date_count_increment(
 ) -> impl Responder {
     let date_id = &date_info;
     tracing::info!("Increment pushed on: {}", &date_id);
-    match app_state.lock() {
-        Ok(mut repo) => {
-            repo.get_mut(date_id).unwrap().add();
-            HttpResponse::Ok().body(render_buttons(repo.get_all()).unwrap())
-        }
-        Err(_) => HttpResponse::InternalServerError().finish(),
-    }
+    app_state.increment_date_count(date_id).await;
+    HttpResponse::Ok().body(render_buttons(app_state.get_all().await).unwrap())
 }
 #[get("{date_info}/decrement")]
 async fn date_count_decrement(
@@ -35,13 +30,8 @@ async fn date_count_decrement(
 ) -> impl Responder {
     let date_id = &date_info;
     tracing::info!("Decrement pushed on: {}", &date_id);
-    match app_state.lock() {
-        Ok(mut repo) => {
-            repo.get_mut(date_id).unwrap().minus();
-            HttpResponse::Ok().body(render_buttons(repo.get_all()).unwrap())
-        }
-        Err(_) => HttpResponse::InternalServerError().finish(),
-    }
+    app_state.decrement_date_count(date_id).await;
+    HttpResponse::Ok().body(render_buttons(app_state.get_all().await).unwrap())
 }
 
 #[post("new_date")]
@@ -56,13 +46,10 @@ async fn add_new_date(
     if new_date.get("new_date").unwrap().is_empty() {
         return HttpResponse::Forbidden().finish();
     }
-    match app_state.lock() {
-        Ok(mut repo) => {
-            repo.add(Date::new(new_date.get("new_date").unwrap().clone()));
-            HttpResponse::Ok().body(render_buttons(repo.get_all()).unwrap())
-        }
-        Err(_) => HttpResponse::InternalServerError().finish(),
-    }
+    app_state
+        .add(Date::new(new_date.get("new_date").unwrap().clone()))
+        .await;
+    HttpResponse::Ok().body(render_buttons(app_state.get_all().await).unwrap())
 }
 fn render_buttons(dates: Vec<Date>) -> anyhow::Result<String> {
     let mut ctx = Context::new();

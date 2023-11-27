@@ -1,9 +1,8 @@
 [package]
 name = "dates"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 uuid = { version = "1.6.1", features = ["v4"] }
@@ -18,3 +17,6 @@ tracing = { version = "0.1.40", features = ["log"] }
 tracing-subscriber = "0.3.18"
 shuttle-actix-web = "0.34.0"
 shuttle-runtime = "0.34.0"
+sqlx = { version = "0.7.3", features = ["macros", "postgres", "bigdecimal"] }
+shuttle-shared-db = { version = "0.34.0", features = ["postgres"] }
+async-traits = "0.0.0"
