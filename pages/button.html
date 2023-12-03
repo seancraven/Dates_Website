@@ -5,8 +5,8 @@
 >
   <div class="mb-4">
     <div class="w-full flex items-center bg-teal-lightest font-sans mb-5">
-      <p class="w-full flex items-center justify-left">Date Name</p>
-      <p class="w-full flex items-center justify-center">Date Upvotes</p>
+      <p class="w-full flex-1 items-center justify-center">Date Name</p>
+      <p class="w-full flex-1 items-center justify-center">Date Upvotes</p>
     </div>
     <div id="dates">
       {% for date in dates %}
@@ -17,8 +17,8 @@
       >
         <p class="w-full">{{date.name}}</p>
         <button
-          class="flex-no-shrink p-2 ml-4 mr-2 border-2 rounded hover:bg-emerald-100 text-grey border-grey hover:bg-grey"
-          hx-get="dates/{{date.id}}/increment"
+          class="flex-none p-2 ml-4 mr-2 border-2 rounded hover:bg-emerald-100 text-grey border-grey hover:bg-grey"
+          hx-post="dates/{{date.id}}/increment"
           hx-target="#greater_dates"
           hx-trigger="click"
           hx-swap="outerHTML"
@@ -26,19 +26,28 @@
           +
         </button>
         <button
-          class="flex-no-shrink p-2 ml-4 mr-2 border-2 rounded hover:bg-red-100 text-grey border-grey hover:bg-grey"
-          hx-get="dates/{{date.id}}/decrement"
+          class="flex-none p-2 ml-4 mr-2 border-2 rounded hover:bg-red-100 text-grey border-grey hover:bg-grey"
+          hx-post="dates/{{date.id}}/decrement"
           hx-target="#greater_dates"
           hx-trigger="click"
           hx-swap="outerHTML"
         >
           -
         </button>
-        <p class="w-1/6">{{date.count}}</p>
+        <button
+          class="flex-none p-2 ml-4 mr-2 border-2 rounded hover:font-bold text-red-500 border-grey hover:bg-grey"
+          hx-post="dates/{{date.id}}/remove"
+          hx-target="#greater_dates"
+          hx-trigger="click"
+          hx-swap="outerHTML"
+        >
+          x
+        </button>
+        <p class="w-1/8">{{date.count}}</p>
       </div>
       {% endfor %}
     </div>
-    <div class="mt-4">
+    <div class="flex-1 mb-4 items-center">
       <form id="date_add">
         <input
           placeholder="Enter Date Idea &#x1F60D;"
@@ -51,7 +60,7 @@
           hx-target="#greater_dates"
           hx-trigger="click"
           hx-swap="outerHTML"
-          class="p-2 mr-2 border-2 rounded hover:bg-cyan-100 text-grey border-grey hover:bg-grey"
+          class="flex-1 p-2 mr-2 border-2 rounded hover:bg-cyan-100 text-grey border-grey hover:bg-grey"
         >
           add
         </button>

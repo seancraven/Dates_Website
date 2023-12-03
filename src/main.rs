@@ -4,7 +4,8 @@ mod templating;
 
 use actix_web::web;
 use actix_web::web::ServiceConfig;
-use domain::repository::{AppState, VecRepo};
+use domain::postgres_repository::PgRepo;
+use domain::repository::AppState;
 use routes::dates::dates_service;
 use routes::index::index;
 use shuttle_actix_web::ShuttleActixWeb;
@@ -18,7 +19,7 @@ async fn main(
     let db_url = secret_store.get("DATABASE_URL").unwrap();
     std::env::set_var("DATABASE_URL", db_url);
     sqlx::migrate!().run(&pool).await.unwrap();
-    let state = AppState::new(Box::new(VecRepo::new(vec![])));
+    let state = AppState::new(Box::new(PgRepo { pool }));
     let config = move |cfg: &mut ServiceConfig| {
         cfg.service(
             web::scope("/dates")
