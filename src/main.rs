@@ -16,8 +16,8 @@ async fn main(
     #[shuttle_shared_db::Postgres] pool: PgPool,
     #[shuttle_secrets::Secrets] secret_store: SecretStore,
 ) -> ShuttleActixWeb<impl FnOnce(&mut ServiceConfig) + Send + Clone + 'static> {
-    let db_url = secret_store.get("DATABASE_URL").unwrap();
-    std::env::set_var("DATABASE_URL", db_url);
+    // let db_url = secret_store.get("DATABASE_URL").unwrap();
+    // std::env::set_var("DATABASE_URL", db_url);
     sqlx::migrate!().run(&pool).await.unwrap();
     let state = AppState::new(Box::new(PgRepo { pool }));
     let config = move |cfg: &mut ServiceConfig| {

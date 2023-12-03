@@ -1,1 +1,1 @@
-assets = ["pages/*"]
+assets = ["pages/*", "migrations/*"]
