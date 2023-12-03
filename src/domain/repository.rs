@@ -2,6 +2,7 @@ use actix_web::web;
 use anyhow::anyhow;
 use serde::Serialize;
 use shuttle_runtime::async_trait;
+use sqlx::prelude::FromRow;
 use std::sync::Mutex;
 
 pub type AppState = web::Data<Box<dyn Repository + Send + Sync>>;
@@ -27,14 +28,14 @@ pub trait Repository {
     async fn decrement_date_count(&self, date_id: &uuid::Uuid) -> anyhow::Result<()>;
     async fn get(&self, date_id: &uuid::Uuid) -> Option<Date>;
 }
-#[derive(Debug, Serialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Clone, PartialEq, FromRow)]
 /// Date storage
 ///
 /// * `name`: The name of the date
 /// * `count`: The number of upvotes for the date.
 pub struct Date {
     pub name: String,
-    pub count: usize,
+    pub count: i32,
     pub id: uuid::Uuid,
 }
 impl Date {
@@ -137,11 +138,12 @@ impl Repository for VecRepo {
 mod test {
     use super::*;
 
-    #[test]
-    fn test_add() {
-        let mut repo = VecRepo::new(vec![]);
+    #[tokio::test]
+    async fn test_add() {
+        let repo = VecRepo::new(vec![]);
         let date = Date::new("Sexy");
-        repo.add(date.clone());
-        assert!(repo.dates.lock().unwrap().contains(&date));
+        repo.add(date.clone()).await;
+        let test_date = repo.get(&date.id).await.unwrap();
+        assert_eq!(test_date, date);
     }
 }

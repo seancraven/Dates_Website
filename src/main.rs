@@ -8,11 +8,15 @@ use domain::repository::{AppState, VecRepo};
 use routes::dates::dates_service;
 use routes::index::index;
 use shuttle_actix_web::ShuttleActixWeb;
+use shuttle_secrets::SecretStore;
 use sqlx::PgPool;
 #[shuttle_runtime::main]
 async fn main(
     #[shuttle_shared_db::Postgres] pool: PgPool,
+    #[shuttle_secrets::Secrets] secret_store: SecretStore,
 ) -> ShuttleActixWeb<impl FnOnce(&mut ServiceConfig) + Send + Clone + 'static> {
+    let db_url = secret_store.get("DATABASE_URL").unwrap();
+    std::env::set_var("DATABASE_URL", db_url);
     sqlx::migrate!().run(&pool).await.unwrap();
     let state = AppState::new(Box::new(VecRepo::new(vec![])));
     let config = move |cfg: &mut ServiceConfig| {
