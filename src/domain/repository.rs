@@ -13,19 +13,28 @@ pub trait Repository {
     /// Add a date to the repository.
     ///
     /// * `date`:
-    async fn add(&self, date: Date);
+    async fn add(&self, date: Date) -> anyhow::Result<()>;
     /// Remove a date from the repository.
     ///
-    /// * `date`:
-    async fn remove(&self, date: Date);
-    /// Return a copy of the repository's contents.
+    /// * `date_id`:
+    async fn remove(&self, date_id: &uuid::Uuid) -> anyhow::Result<()>;
+    /// Return a copy of the repository's contents, sorted by from higest to lowest.
     async fn get_all(&self) -> Vec<Date>;
     /// Update's the repository entry for a given date.
     ///
     /// * `date_name`:
     async fn update(&self, date: Date) -> anyhow::Result<()>;
+    /// Increment the count of a given date.
+    ///
+    /// * `date_id`: date to increment
     async fn increment_date_count(&self, date_id: &uuid::Uuid) -> anyhow::Result<()>;
+    /// Decrement the count of a given date.
+    ///
+    /// * `date_id`: date to decrement
     async fn decrement_date_count(&self, date_id: &uuid::Uuid) -> anyhow::Result<()>;
+    /// Get a date from the repository.
+    ///
+    /// * `date_id`:
     async fn get(&self, date_id: &uuid::Uuid) -> Option<Date>;
 }
 #[derive(Debug, Serialize, Clone, PartialEq, FromRow)]
@@ -67,8 +76,9 @@ impl VecRepo {
 }
 #[async_trait]
 impl Repository for VecRepo {
-    async fn add(&self, date: Date) {
+    async fn add(&self, date: Date) -> anyhow::Result<()> {
         self.dates.lock().unwrap().push(date);
+        Ok(())
     }
     async fn update(&self, new_date: Date) -> anyhow::Result<()> {
         if let Some(date) = self
@@ -117,13 +127,15 @@ impl Repository for VecRepo {
         None
     }
     async fn get_all(&self) -> Vec<Date> {
-        self.dates.lock().unwrap().clone()
+        let mut v = self.dates.lock().unwrap().clone();
+        v.sort_by(|a, b| b.count.cmp(&a.count));
+        v
     }
 
-    async fn remove(&self, date: Date) {
+    async fn remove(&self, date_id: &uuid::Uuid) -> anyhow::Result<()> {
         let mut removal_ind = None;
         for (i, _date) in self.dates.lock().unwrap().iter().enumerate() {
-            if _date.name == date.name {
+            if _date.id == *date_id {
                 removal_ind = Some(i);
                 break;
             }
@@ -131,6 +143,7 @@ impl Repository for VecRepo {
         if let Some(r_ind) = removal_ind {
             self.dates.lock().unwrap().remove(r_ind);
         }
+        Ok(())
     }
 }
 
