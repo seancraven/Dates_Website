@@ -38,6 +38,10 @@ pub trait Repository {
     async fn get(&self, date_id: &uuid::Uuid) -> Option<Date>;
 }
 #[derive(Debug, Serialize, Clone, PartialEq, FromRow)]
+pub struct Description {
+    text: String,
+}
+#[derive(Debug, Serialize, Clone, PartialEq, FromRow)]
 /// Date storage
 ///
 /// * `name`: The name of the date
@@ -46,6 +50,7 @@ pub struct Date {
     pub name: String,
     pub count: i32,
     pub id: uuid::Uuid,
+    pub description: Option<Description>,
 }
 impl Date {
     pub fn new(name: impl Into<String>) -> Date {
@@ -53,6 +58,7 @@ impl Date {
             name: name.into(),
             count: 0,
             id: uuid::Uuid::new_v4(),
+            description: None,
         }
     }
     pub fn add(&mut self) {
