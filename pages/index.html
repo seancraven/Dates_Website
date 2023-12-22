@@ -1,24 +1,22 @@
 <!-- templates/base.html -->
 <!doctype html>
 <html lang="en">
-  <meta charset="utf-8" />
-  <head>
-    <script
-      src="https://unpkg.com/htmx.org@1.9.9"
-      integrity="sha384-QFjmbokDn2DjBjq+fM+8LUIVrAgqcNW2s0PjAxHETgRn9l4fvX31ZxDxvwQnyMOX"
-      crossorigin="anonymous"
-    ></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <title>Dates Index</title>
-  </head>
-  <body>
-    <h1
-      id="content"
-      ,
-      class="w-full flex items-center justify-center bg-teal-lightest font-sans text-2xl mb-4"
-    >
-      Current Date Ideas
-    </h1>
-    {% include "button.html" %}
-  </body>
+<meta charset="utf-8" />
+
+<head>
+  <script src="https://unpkg.com/htmx.org@1.9.9"
+    integrity="sha384-QFjmbokDn2DjBjq+fM+8LUIVrAgqcNW2s0PjAxHETgRn9l4fvX31ZxDxvwQnyMOX"
+    crossorigin="anonymous"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <title>Dates Index</title>
+</head>
+
+<body>
+  <h1 id="content" ,
+    class="w-full flex items-center justify-center bg-teal-lightest font-sans text-2xl mb-4 container mx-auto">
+    Current Date Ideas
+  </h1>
+  {% include "button.html" %}
+</body>
+
 </html>
