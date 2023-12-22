@@ -61,7 +61,8 @@ async fn add_new_date(
     }
     app_state
         .add(Date::new(new_date.get("new_date").unwrap().clone()))
-        .await;
+        .await
+        .unwrap();
     HttpResponse::Ok().body(render_buttons(app_state.get_all().await).unwrap())
 }
 fn render_buttons(dates: Vec<Date>) -> anyhow::Result<String> {

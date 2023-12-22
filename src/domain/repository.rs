@@ -155,7 +155,7 @@ mod test {
     async fn test_add() {
         let repo = VecRepo::new(vec![]);
         let date = Date::new("Sexy");
-        repo.add(date.clone()).await;
+        repo.add(date.clone()).await.unwrap();
         let test_date = repo.get(&date.id).await.unwrap();
         assert_eq!(test_date, date);
     }

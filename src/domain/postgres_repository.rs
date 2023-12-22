@@ -120,24 +120,15 @@ mod tests {
     use super::*;
     use env_logger::try_init;
     use sqlx::postgres::PgPool;
-    use std::fs::read_to_string;
+
     fn init() {
         try_init().ok();
     }
 
     async fn db_setup() -> PgPool {
-        let secret_toml: toml::Value =
-            toml::from_str(&read_to_string("Secrets.toml").expect("Can't load Secrets.toml"))
-                .unwrap();
-        PgPool::connect(
-            secret_toml
-                .get("DATABASE_URL")
-                .expect("Couldn't find key in toml")
-                .as_str()
-                .expect("decoding to str failed"),
-        )
-        .await
-        .unwrap()
+        PgPool::connect("postgres://postgres:postgres@localhost:17972/postgres")
+            .await
+            .unwrap()
     }
     #[tokio::test]
     async fn test_add_get() {
