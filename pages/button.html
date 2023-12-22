@@ -1,90 +1,49 @@
-<div
-  id="greater_dates"
-  ,
-  class="h-100 w-full flex items-center justify-center bg-teal-lightest font-sans container mx-sm"
->
-  <div class="mb-4">
-    <div class="flex items-center bg-teal-lightest font-sans mb-5 columns-2">
-      <p class="w-full items-center justify-center">Date Name</p>
-      <p class="w-full items-center justify-center">Date Upvotes</p>
+<div id="greater_dates" , class="h-100 bg-teal-lightest font-sans">
+  <div id="dates" class="grid grid-cols-4 gap-4 items-center md:px-80">
+    <div class="col-span-2 text-center">
+      <h3>Date Name</h3>
     </div>
-    <div id="dates" class="grid container mx-auto">
-      {% for date in dates %}
-      <div
-        id="date_container_{{loop.index0}}"
-        ,
-        class="flex mb-4 items-center justify-left grid-cols-2"
-      >
-        <div>
-          <p class="w-full">{{date.name}}</p>
-        </div>
-        <div>
-          <button
-            class="flex-auto p-2 ml-4 mr-2 border-2 rounded hover:bg-emerald-100 text-grey border-grey hover:bg-grey"
-            hx-post="dates/{{date.id}}/increment"
-            hx-target="#greater_dates"
-            hx-trigger="click"
-            hx-swap="outerHTML"
-          >
-            +
-          </button>
-          <button
-            class="flex-auto p-2 ml-4 mr-2 border-2 rounded hover:bg-red-100 text-grey border-grey hover:bg-grey"
-            hx-post="dates/{{date.id}}/decrement"
-            hx-target="#greater_dates"
-            hx-trigger="click"
-            hx-swap="outerHTML"
-          >
-            -
-          </button>
-          <button
-            class="flex-auto p-2 ml-4 mr-2 border-2 rounded hover:font-bold text-red-500 border-grey hover:bg-grey"
-            hx-post="dates/{{date.id}}/remove"
-            hx-target="#greater_dates"
-            hx-trigger="click"
-            hx-swap="outerHTML"
-          >
-            x
-          </button>
-          <span class="flex-auto">{{date.count}}</span>
-        </div>
-      </div>
-      <div class="">
-        <p class="">
-          On the other hand, we denounce with righteous indignation and dislike
-          men who are so beguiled and demoralized by the charms of pleasure of
-          the moment, so blinded by desire, that they cannot foresee the pain
-          and trouble that are bound to ensue; and equal blame belongs to those
-          who fail in their duty through weakness of will, which is the same as
-          saying through shrinking from toil and pain. These cases are perfectly
-          simple and easy to distinguish. In a free hour, when our power of
-          choice is untrammelled and when nothing prevents our being able to do
-          what we like best, every pleasure is to be welcomed and every pain
-          avoided. But in certain circumstances and owing to the claims of duty
-          or the obligations of business it will frequently occur that pleasures
-          have to be repudiated and annoyances accepted. The wise man therefore
-          always holds in these matters to this principle of selection: he
-          rejects pleasures to secure other greater pleasures, or else he
-          endures pains to avoid worse pains."
-        </p>
-      </div>
-      {% endfor %}
+    <div class="col-span-2 text-center">
+      <h3>Upvotes</h3>
     </div>
-    <div class="flex-1 mb-4 items-center">
-      <form id="date_add">
-        <input
-          placeholder="Enter Date Idea &#x1F60D;"
-          type="text"
-          name="new_date"
-          class="shadow appearance-none border rounded py-2 px-3 mr-4 text-grey-darker"
-        />
+    {% for date in dates %}
+    <div class="col-span-3 w-full p-2 shadow rounded items-center">
+      <p class="pl-2 text-left allign-middle">{{date.name}}</p>
+    </div>
+    <div class="col-span-1 flex items-center">
+      <button
+        class="allign-middle flex-grow p-2 ml-2 mr-2 border-2 rounded hover:bg-emerald-100 text-grey border-grey hover:bg-grey"
+        hx-post="dates/{{date.id}}/increment" hx-target="#greater_dates" hx-trigger="click" hx-swap="outerHTML">
+        +
+        </buttonclass>
         <button
-          hx-post="dates/new_date"
-          hx-target="#greater_dates"
-          hx-trigger="click"
-          hx-swap="outerHTML"
-          class="flex-1 p-2 mr-2 border-2 rounded hover:bg-cyan-100 text-grey border-grey hover:bg-grey"
-        >
+          class="allign-middle flex-growp p-2 ml-2 mr-2 border-2 rounded hover:bg-red-100 text-grey border-grey hover:bg-grey"
+          hx-post="dates/{{date.id}}/decrement" hx-target="#greater_dates" hx-trigger="click" hx-swap="outerHTML">
+          -
+        </button>
+        <button
+          class="allign-middle flex-grow p-2 ml-2 mr-2 border-2 rounded hover:font-bold text-red-500 border-grey hover:bg-grey"
+          hx-post="dates/{{date.id}}/remove" hx-target="#greater_dates" hx-trigger="click" hx-swap="outerHTML">
+          x
+        </button>
+        <span class="w-40 allign-middle"> {{date.count}}</span>
+    </div>
+    {% if date.description_bool %}
+    <div class="col-span-3">
+      <p class="text-left shadow rounded">
+        {{date.description}}
+      </p>
+    </div>
+    <div class="col-span-1"> </div>
+    {% else %}
+    {% endif %}
+    {% endfor %}
+    <div class="col-span-4">
+      <form id="date_add" class="px-3 grid grid-cols-4 ">
+        <input placeholder="Enter Date Idea &#x1F60D;" type="text" name="new_date"
+          class="text-left col-span-3 shadow rounded border-2 mr-2 p-2 allign-middle" />
+        <button hx-post="dates/new_date" hx-target="#greater_dates" hx-trigger="click" hx-swap="outerHTML"
+          class="text-grey text-center allign-middle col-span-1 p-2 mr-2 border-2 rounded hover:bg-cyan-100 border-grey">
           add
         </button>
       </form>
