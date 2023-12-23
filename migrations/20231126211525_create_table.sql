@@ -2,7 +2,9 @@ CREATE TABLE IF NOT EXISTS dates (
 id VARCHAR NOT NULL,
 name VARCHAR NOT NULL,
 count_ INT NOT NULL,
-description VARCHAR,
+day TIMESTAMP,
+status enum("SUGGESTED", "JOINTAPPROVED", "REJECTED") NOT NULL,
+description VARCHAR, 
 PRIMARY KEY(id)
 );
 

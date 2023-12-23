@@ -1,4 +1,5 @@
-use crate::domain::repository::{AppState, Date};
+use crate::domain::dates::Date;
+use crate::domain::repository::AppState;
 use actix_web::web::ServiceConfig;
 use actix_web::{post, web};
 use actix_web::{HttpResponse, Responder};

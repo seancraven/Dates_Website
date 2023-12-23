@@ -1,4 +1,5 @@
-use crate::domain::repository::{AppState, Date};
+use crate::domain::dates::Date;
+use crate::domain::repository::AppState;
 use actix_web::{get, HttpResponse, Responder};
 use tera::{Context, Tera};
 

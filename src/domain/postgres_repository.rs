@@ -1,8 +1,10 @@
+use super::repository::Repository;
+use chrono::{DateTime, Local};
 use log::error;
 use shuttle_runtime::async_trait;
 use sqlx::{prelude::FromRow, PgPool};
 
-use super::repository::{Date, Repository};
+use super::dates::{Date, Description, Status};
 
 pub struct PgRepo {
     pub pool: PgPool,
@@ -12,6 +14,9 @@ struct PgDate {
     id: String,
     name: String,
     count_: i32,
+    day: DateTime<Local>,
+    description: Option<String>,
+    status: Status,
 }
 impl TryInto<Date> for PgDate {
     type Error = anyhow::Error;
@@ -20,13 +25,18 @@ impl TryInto<Date> for PgDate {
             id: uuid::Uuid::parse_str(&self.id)?,
             name: self.name,
             count: self.count_,
+            description: Some(Description::new(
+                self.description.unwrap_or("".into()),
+                self.day,
+                self.status,
+            )),
         })
     }
 }
 
 #[async_trait]
 impl Repository for PgRepo {
-    async fn add(&self, date: super::repository::Date) -> anyhow::Result<()> {
+    async fn add(&self, date: Date) -> anyhow::Result<()> {
         sqlx::query!(
             r#"INSERT INTO dates (id, name, count_ ) VALUES ($1, $2, $3)"#,
             date.id.to_string(),
@@ -37,7 +47,7 @@ impl Repository for PgRepo {
         .await?;
         Ok(())
     }
-    async fn get(&self, _date_id: &uuid::Uuid) -> Option<super::repository::Date> {
+    async fn get(&self, _date_id: &uuid::Uuid) -> Option<Date> {
         match sqlx::query_as!(
             PgDate,
             r#"SELECT * FROM dates WHERE id=$1"#,
@@ -140,6 +150,7 @@ mod tests {
             name: "Test".into(),
             count: 0,
             id: uuid::Uuid::new_v4(),
+            description: None,
         };
         repo.add(date.clone()).await.unwrap();
         let ret_date = repo.get(&date.id).await.unwrap();
@@ -156,6 +167,7 @@ mod tests {
             name: "Test".into(),
             count: 0,
             id: uuid::Uuid::new_v4(),
+            description: None,
         };
         repo.add(date.clone()).await.unwrap();
         repo.remove(&date.id).await.unwrap();
@@ -171,6 +183,7 @@ mod tests {
             name: "Test".into(),
             count: 0,
             id: uuid::Uuid::new_v4(),
+            description: None,
         };
         repo.add(date.clone()).await.unwrap();
         repo.increment_date_count(&date.id).await.unwrap();
@@ -187,6 +200,7 @@ mod tests {
             name: "Test".into(),
             count: 1,
             id: uuid::Uuid::new_v4(),
+            description: None,
         };
         repo.add(date.clone()).await.unwrap();
         repo.decrement_date_count(&date.id).await.unwrap();
@@ -208,6 +222,7 @@ mod tests {
                 name: "test_multi".into(),
                 count: i,
                 id: uuid::Uuid::new_v4(),
+                description: None,
             };
             dates.push(date.clone());
             repo.add(date).await.unwrap();
