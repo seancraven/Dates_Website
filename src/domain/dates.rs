@@ -1,29 +1,36 @@
-use chrono::{DateTime, Local};
 use serde::Serialize;
+use sqlx;
+use sqlx::sqlx_macros::Type;
+use sqlx::types::chrono::{DateTime, Local};
+use sqlx::types::uuid::Uuid;
 use sqlx::FromRow;
-#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Type)]
+#[repr(i32)]
 pub enum Status {
     Suggested,
-    JointApproved,
+    Approved,
     Rejected,
 }
 
 #[derive(Debug, Serialize, Clone, PartialEq, FromRow)]
 pub struct Description {
-    text: String,
-    status: Status,
-    day: chrono::DateTime<chrono::Local>,
+    pub text: String,
+    pub status: Status,
+    pub day: Option<DateTime<Local>>,
 }
 impl Description {
-    pub fn new(text: impl Into<String>, day: DateTime<Local>, status: Status) -> Description {
+    pub fn default() -> Description {
         Description {
-            text: text.into(),
-            status,
-            day,
+            text: "".into(),
+            status: Status::Suggested,
+            day: None,
         }
     }
+    pub fn new(text: String, status: Status, day: Option<DateTime<Local>>) -> Description {
+        Description { text, status, day }
+    }
     pub fn approve(&mut self) {
-        self.status = Status::JointApproved;
+        self.status = Status::Approved;
     }
     pub fn reject(&mut self) {
         self.status = Status::Rejected;
@@ -37,8 +44,8 @@ impl Description {
 pub struct Date {
     pub name: String,
     pub count: i32,
-    pub id: uuid::Uuid,
-    pub description: Option<Description>,
+    pub id: Uuid,
+    pub description: Description,
 }
 impl Date {
     pub fn new(name: impl Into<String>) -> Date {
@@ -46,7 +53,7 @@ impl Date {
             name: name.into(),
             count: 0,
             id: uuid::Uuid::new_v4(),
-            description: None,
+            description: Description::default(),
         }
     }
     pub fn add(&mut self) {
