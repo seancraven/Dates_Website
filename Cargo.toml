@@ -1,6 +1,6 @@
 [package]
 name = "dates"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 
 
@@ -15,11 +15,18 @@ tera = "1.19.1"
 tokio = "1.34.0"
 tracing = { version = "0.1.40", features = ["log"] }
 tracing-subscriber = "0.3.18"
-shuttle-actix-web = "0.34.1"
-shuttle-runtime = "0.34.1"
-shuttle-secrets = "0.34.1"
-sqlx = { version = "0.7.3", features = ["macros", "postgres", "bigdecimal", "time", "chrono", "uuid"] }
-shuttle-shared-db = { version = "0.34.0", features = ["postgres"] }
+shuttle-actix-web = "0.35.2"
+shuttle-runtime = "0.35.2"
+shuttle-secrets = "0.35.2"
+sqlx = { version = "0.7.3", features = [
+  "macros",
+  "postgres",
+  "bigdecimal",
+  "time",
+  "chrono",
+  "uuid",
+] }
+shuttle-shared-db = { version = "0.35.2", features = ["postgres"] }
 async-traits = "0.0.0"
 toml = "0.8.8"
 chrono = { version = "0.4.31", features = ["serde"] }
