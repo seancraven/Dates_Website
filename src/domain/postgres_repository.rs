@@ -124,10 +124,13 @@ impl Repository for PgRepo {
     }
     async fn update(&self, _date: Date) -> anyhow::Result<()> {
         sqlx::query!(
-            r#"UPDATE dates SET count_=$1, name=$2 WHERE id = $3"#,
+            r#"UPDATE dates SET count_=$1, name=$2, day=$4, status=$5,  description=$6 WHERE id = $3"#,
             _date.count,
             _date.name,
-            _date.id
+            _date.id,
+            _date.description.day, 
+            _date.description.status as i32,
+            _date.description.text,
         )
         .execute(&self.pool)
         .await?;

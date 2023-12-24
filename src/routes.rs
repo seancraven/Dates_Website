@@ -1,2 +1,2 @@
-pub mod dates;
+pub mod dates_service;
 pub mod index;

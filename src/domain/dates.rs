@@ -4,12 +4,23 @@ use sqlx::sqlx_macros::Type;
 use sqlx::types::chrono::{DateTime, Local};
 use sqlx::types::uuid::Uuid;
 use sqlx::FromRow;
+use std::fmt;
+
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Type)]
 #[repr(i32)]
 pub enum Status {
     Suggested,
     Approved,
     Rejected,
+}
+impl Status {
+    fn to_string(&self) -> String {
+        match self {
+            Status::Suggested => "Suggested".into(),
+            Status::Approved => "Approved".into(),
+            Status::Rejected => "Rejected".into(),
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Clone, PartialEq, FromRow)]
@@ -35,8 +46,21 @@ impl Description {
     pub fn reject(&mut self) {
         self.status = Status::Rejected;
     }
+    pub fn render_date(&self) -> String {
+        match self.day {
+            Some(day) => day.format("%H:%M %d/%m/%Y").to_string(),
+            None => "No date set".into(),
+        }
+    }
+    pub fn render_status(&self) -> String {
+        match self.status {
+            Status::Suggested => "Waiting for approval".into(),
+            Status::Approved => "Approved".into(),
+            Status::Rejected => "Rejected".into(),
+        }
+    }
 }
-#[derive(Debug, Serialize, Clone, PartialEq, FromRow)]
+#[derive(Debug, Serialize, Clone, PartialEq)]
 /// Date storage
 ///
 /// * `name`: The name of the date

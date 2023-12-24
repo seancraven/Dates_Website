@@ -1,0 +1,43 @@
+<div id="date-{{date.id}}-description" class="col-span-3 grid grid-cols-1">
+  <form id="date-{{date.id}}-day" class="grid grid-cols-2">
+    <input
+      type="date"
+      name="day"
+      class="text-left col-span-1 shadow rounded border-2 p-2 allign-middle"
+    />
+    <input
+      type="time"
+      name="time"
+      class="text-left col-span-1 shadow rounded border-2 p-2 allign-middle"
+    />
+    <textarea
+      id="description_text"
+      name="description_text"
+      rows="4"
+      cols="50"
+      class="col-span-2 shadow rounded border-2 p-2"
+    >
+{{date.description.text}}
+  </textarea
+    >
+
+    <button
+      hx-post="dates/{{date.id}}/description"
+      hx-target="#date-{{date.id}}-description, this"
+      hx-trigger="click"
+      hx-swap="outerHTML"
+      class="text-grey text-center allign-middle col-span-1 p-2 border-2 rounded hover:bg-cyan-100 border-grey black"
+    >
+      Submit
+    </button>
+    <button
+      hx-get="dates/{{date.id}}/description"
+      hx-target="#date-{{date.id}}-description, this"
+      hx-trigger="click"
+      hx-swap="outerHTML"
+      class="text-grey text-center allign-middle col-span-1 p-2 border-2 rounded hover:bg-cyan-100 border-grey black"
+    >
+      Cancel
+    </button>
+  </form>
+</div>

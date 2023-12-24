@@ -3,8 +3,48 @@ use actix_web::web;
 use anyhow::anyhow;
 use shuttle_runtime::async_trait;
 use std::sync::Mutex;
+use uuid::Uuid;
 
-pub type AppState = web::Data<Box<dyn Repository + Send + Sync>>;
+pub struct AppState {
+    pub repo: Box<dyn Repository + Send + Sync>,
+    pub cache: ExpansionCache,
+}
+impl AppState {
+    pub fn new(repo: Box<dyn Repository + Send + Sync>) -> AppState {
+        AppState {
+            repo,
+            cache: ExpansionCache::new(),
+        }
+    }
+    pub fn new_in_web_data(repo: Box<dyn Repository + Send + Sync>) -> web::Data<AppState> {
+        web::Data::new(AppState::new(repo))
+    }
+}
+
+#[derive(Debug)]
+pub struct ExpansionCache {
+    cache: Mutex<Vec<Uuid>>,
+}
+impl ExpansionCache {
+    pub fn remove(&self, id: &Uuid) {
+        self.cache.lock().unwrap().retain(|x| x != id);
+    }
+    pub fn add(&self, id: Uuid) {
+        self.cache.lock().unwrap().push(id);
+    }
+    pub fn contains(&self, id: &Uuid) -> bool {
+        self.cache.lock().unwrap().contains(id)
+    }
+    pub fn reset(&self) {
+        self.cache.lock().unwrap().clear();
+    }
+    pub fn new() -> ExpansionCache {
+        ExpansionCache {
+            cache: Mutex::new(vec![]),
+        }
+    }
+}
+
 #[async_trait]
 /// Abstraction over storage, so that it can be in memory or persistent.
 /// The repository shouldn't need to have mutable acess

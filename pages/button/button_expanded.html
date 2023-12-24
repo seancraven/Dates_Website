@@ -1,0 +1,13 @@
+<div class="col-span-4 grid grid-cols-4" id="date-{{date.id}}">
+  <button
+    class="col-span-3 w-full p-2 shadow rounded items-center pl-2 text-left allign-middle hover:bg-red-50"
+    hx-post="dates/{{date.id}}"
+    hx-target="#date-{{date.id}}"
+    hx-trigger="click"
+    hx-swap="outerHTML"
+  >
+    {{date.name}}
+  </button>
+  {% include "button_inner.html" %} {{description|safe}}
+  <p class="col-span-1"></p>
+</div>

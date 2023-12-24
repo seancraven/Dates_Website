@@ -1,0 +1,30 @@
+<div id="greater_dates" , class="h-100 bg-teal-lightest font-sans">
+  <div id="dates" class="grid grid-cols-4 gap-4 items-center md:px-80">
+    <div class="font-semibold col-span-3 text-center">
+      <h3>Date</h3>
+    </div>
+    <div class="font-semibold col-span-1 text-center">
+      <h3>Upvotes</h3>
+    </div>
+    {% for date in dates %} {{ date }} {% endfor %}
+    <div class="col-span-4">
+      <form id="date_add" class="px-3 grid grid-cols-4">
+        <input
+          placeholder="Enter Date Idea &#x1F60D;"
+          type="text"
+          name="new_date"
+          class="text-left col-span-3 shadow rounded border-2 mr-2 p-2 allign-middle"
+        />
+        <button
+          hx-post="dates/new_date"
+          hx-target="#greater_dates"
+          hx-trigger="click"
+          hx-swap="outerHTML"
+          class="text-grey text-center allign-middle col-span-1 p-2 mr-2 border-2 rounded hover:bg-cyan-100 border-grey"
+        >
+          add
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
