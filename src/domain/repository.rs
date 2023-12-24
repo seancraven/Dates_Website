@@ -1,11 +1,50 @@
+use super::dates::Date;
 use actix_web::web;
 use anyhow::anyhow;
-use serde::Serialize;
 use shuttle_runtime::async_trait;
-use sqlx::prelude::FromRow;
 use std::sync::Mutex;
+use uuid::Uuid;
 
-pub type AppState = web::Data<Box<dyn Repository + Send + Sync>>;
+pub struct AppState {
+    pub repo: Box<dyn Repository + Send + Sync>,
+    pub cache: ExpansionCache,
+}
+impl AppState {
+    pub fn new(repo: Box<dyn Repository + Send + Sync>) -> AppState {
+        AppState {
+            repo,
+            cache: ExpansionCache::new(),
+        }
+    }
+    pub fn new_in_web_data(repo: Box<dyn Repository + Send + Sync>) -> web::Data<AppState> {
+        web::Data::new(AppState::new(repo))
+    }
+}
+
+#[derive(Debug)]
+pub struct ExpansionCache {
+    cache: Mutex<Vec<Uuid>>,
+}
+impl ExpansionCache {
+    pub fn remove(&self, id: &Uuid) {
+        self.cache.lock().unwrap().retain(|x| x != id);
+    }
+    pub fn add(&self, id: Uuid) {
+        self.cache.lock().unwrap().push(id);
+    }
+    pub fn contains(&self, id: &Uuid) -> bool {
+        self.cache.lock().unwrap().contains(id)
+    }
+    pub fn reset(&self) {
+        self.cache.lock().unwrap().clear();
+    }
+    pub fn new() -> ExpansionCache {
+        ExpansionCache {
+            cache: Mutex::new(vec![]),
+        }
+    }
+}
+
 #[async_trait]
 /// Abstraction over storage, so that it can be in memory or persistent.
 /// The repository shouldn't need to have mutable acess
@@ -37,33 +76,7 @@ pub trait Repository {
     /// * `date_id`:
     async fn get(&self, date_id: &uuid::Uuid) -> Option<Date>;
 }
-#[derive(Debug, Serialize, Clone, PartialEq, FromRow)]
-/// Date storage
-///
-/// * `name`: The name of the date
-/// * `count`: The number of upvotes for the date.
-pub struct Date {
-    pub name: String,
-    pub count: i32,
-    pub id: uuid::Uuid,
-}
-impl Date {
-    pub fn new(name: impl Into<String>) -> Date {
-        Date {
-            name: name.into(),
-            count: 0,
-            id: uuid::Uuid::new_v4(),
-        }
-    }
-    pub fn add(&mut self) {
-        self.count += 1;
-    }
-    pub fn minus(&mut self) {
-        if self.count > 0 {
-            self.count -= 1;
-        }
-    }
-}
+
 pub struct VecRepo {
     pub dates: Mutex<Vec<Date>>,
 }
