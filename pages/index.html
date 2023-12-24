@@ -1,4 +1,3 @@
-<!-- templates/base.html -->
 <!doctype html>
 <html lang="en">
   <meta charset="utf-8" />
@@ -10,6 +9,10 @@
       crossorigin="anonymous"
     ></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <meta
+      name="google-site-verification"
+      content="iQ5iaJ8KAop21SIlNS__EofP2T-MaPy_PhV2Zjmzytw"
+    />
     <title>Date.rs</title>
   </head>
 
@@ -17,10 +20,10 @@
     <h1
       id="content"
       ,
-      class="w-full flex items-center justify-center font-bold font-sans text-2xl mb-4 container mx-auto"
+      class="w-full flex items-center justify-center bg-teal-lightest font-sans text-2xl mb-4 container mx-auto"
     >
-      Date.rs
+      Current Date Ideas
     </h1>
-    {{buttons}}
+    {% include "button.html" %}
   </body>
 </html>
