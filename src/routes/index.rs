@@ -1,20 +1,30 @@
 use crate::domain::repository::AppState;
 use crate::domain::{dates::Date, repository::ExpansionCache};
 use crate::routes::dates_service::render_buttons;
-use actix_web::{get, web::Data, HttpResponse, Responder};
+use actix_web::{get, web::Data, web::Path, HttpResponse, Responder};
 use anyhow::anyhow;
 use tera::{Context, Tera};
+use uuid::Uuid;
 
-#[get("")]
-pub async fn index(app_state: Data<AppState>) -> impl Responder {
-    log::info!("Serving index page");
-    app_state.cache.reset();
-    HttpResponse::Ok()
-        .body(template_load(app_state.repo.get_all().await, &app_state.cache).unwrap())
+#[get("/{user_id}")]
+pub async fn index(app_state: Data<AppState>, user_id: Path<Uuid>) -> impl Responder {
+    app_state.repo.app_state.cache.reset(&user_id);
+    HttpResponse::Ok().body(
+        template_load(
+            app_state.repo.get_all(&user_id).await,
+            &app_state.cache,
+            &user_id,
+        )
+        .unwrap(),
+    )
 }
-fn template_load(dates: Vec<Date>, cache: &ExpansionCache) -> anyhow::Result<String> {
+fn template_load(
+    dates: Vec<Date>,
+    cache: &ExpansionCache,
+    user_id: &Uuid,
+) -> anyhow::Result<String> {
     let mut ctx = Context::new();
-    let buttons = render_buttons(dates, cache)?;
+    let buttons = render_buttons(dates, cache, user_id)?;
     ctx.insert("buttons", &buttons);
     Tera::one_off(&std::fs::read_to_string("./pages/index.html")?, &ctx, false)
         .map_err(|e| anyhow!(e))

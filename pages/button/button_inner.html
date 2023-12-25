@@ -1,7 +1,7 @@
 <div class="col-span-1 flex items-center">
   <button
     class="allign-middle flex-grow p-2 ml-2 mr-2 border-2 rounded hover:bg-emerald-100 text-grey border-grey hover:bg-grey"
-    hx-post="dates/{{date.id}}/increment"
+    hx-post="dates/{{user_id}}/{{date.id}}/increment"
     hx-target="#greater_dates"
     hx-trigger="click"
     hx-swap="outerHTML"
@@ -10,7 +10,7 @@
   </button>
   <button
     class="allign-middle flex-growp p-2 ml-2 mr-2 border-2 rounded hover:bg-red-100 text-grey border-grey hover:bg-grey"
-    hx-post="dates/{{date.id}}/decrement"
+    hx-post="dates/{{user_id}}/{{date.id}}/decrement"
     hx-target="#greater_dates"
     hx-trigger="click"
     hx-swap="outerHTML"
@@ -19,7 +19,7 @@
   </button>
   <button
     class="allign-middle flex-grow p-2 ml-2 mr-2 border-2 rounded hover:font-bold text-red-500 border-grey hover:bg-grey"
-    hx-post="dates/{{date.id}}/remove"
+    hx-post="dates/{{user_id}}/{{date.id}}/remove"
     hx-target="#greater_dates"
     hx-trigger="click"
     hx-swap="outerHTML"

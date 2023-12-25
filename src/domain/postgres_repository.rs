@@ -1,16 +1,35 @@
-use super::repository::Repository;
+use crate::domain::repository::Repository;
 use chrono::Local;
 use log::error;
 use shuttle_runtime::async_trait;
 use sqlx::types::chrono::{DateTime, Utc};
-use sqlx::types::uuid::Uuid;
+use sqlx::types::Uuid;
 use sqlx::FromRow;
 use sqlx::PgPool;
 
 use super::dates::{Date, Description, Status};
+use super::repository::InsertDateError;
+
+#[derive(FromRow, Debug, Clone)]
+pub struct PgUser {
+    pub user_id: Uuid,
+    pub username: String,
+    pub email: String,
+    pub updated_at: DateTime<Utc>,
+    pub created_at: DateTime<Utc>,
+    pub user_group: Option<i32>,
+}
 
 pub struct PgRepo {
     pub pool: PgPool,
+}
+impl PgRepo {
+    async fn get_user_group(&self, user_id: &Uuid) -> anyhow::Result<Option<i32>> {
+        let user = sqlx::query!(r#"SELECT user_group FROM users WHERE user_id=$1"#, user_id)
+            .fetch_one(&self.pool)
+            .await?;
+        Ok(user.user_group)
+    }
 }
 #[derive(FromRow, Debug, Clone)]
 struct PgDate {
@@ -22,6 +41,7 @@ struct PgDate {
     #[sqlx(default)]
     description: Option<String>,
     status: i32,
+    user_group: i32,
 }
 impl TryInto<Date> for PgDate {
     type Error = anyhow::Error;
@@ -46,24 +66,50 @@ impl TryInto<Date> for PgDate {
 
 #[async_trait]
 impl Repository for PgRepo {
-    async fn add(&self, date: Date) -> anyhow::Result<()> {
+    async fn check_access(&self, user_id: &Uuid) -> bool {
+        match sqlx::query!(r#"SELECT user_group FROM users WHERE user_id=$1"#, user_id)
+            .fetch_one(&self.pool)
+            .await
+        {
+            Ok(_) => true,
+            Err(e) => {
+                error!("Database Query error: {}", e);
+                false
+            }
+        }
+    }
+    async fn add(&self, date: Date, user_id: Uuid) -> Result<(), InsertDateError> {
+        let Some(group) = self
+            .get_user_group(&user_id)
+            .await
+            .map_err(|_| InsertDateError::QueryError)?
+        else {
+            return Err(InsertDateError::GroupMembershipError);
+        };
         sqlx::query!(
-            r#"INSERT INTO dates (id, name, count_ , day , status,  description) VALUES ($1, $2, $3, $4, $5, $6)"#,
+            r#"INSERT INTO dates (id, name, count_ , day , status,  description, user_group ) VALUES ($1, $2, $3, $4, $5, $6, $7)"#,
             date.id,
             date.name.clone(),
             date.count,
             date.description.day,
             date.description.status as i32,
             date.description.text,
+            group
         )
         .execute(&self.pool)
-        .await?;
+        .await.map_err(|_| InsertDateError::QueryError)?;
         Ok(())
     }
-    async fn get(&self, _date_id: &Uuid) -> Option<Date> {
-        match sqlx::query_as!(PgDate, r#"SELECT * FROM dates WHERE id=$1"#, _date_id)
-            .fetch_one(&self.pool)
-            .await
+    async fn get<'a, 'ui, 'st>(&'a self, date_id: &'ui Uuid, user_id: &'st Uuid) -> Option<Date> {
+        let group = self.get_user_group(user_id).await.unwrap().unwrap();
+        match sqlx::query_as!(
+            PgDate,
+            r#"SELECT * FROM dates WHERE id=$1 and user_group=$2 "#,
+            date_id,
+            group
+        )
+        .fetch_one(&self.pool)
+        .await
         {
             Ok(d) => match d.try_into() {
                 Ok(date) => Some(date),
@@ -78,14 +124,24 @@ impl Repository for PgRepo {
             }
         }
     }
-    async fn remove(&self, date_id: &uuid::Uuid) -> anyhow::Result<()> {
-        sqlx::query!(r#"DELETE FROM dates WHERE id=$1"#, date_id)
-            .execute(&self.pool)
-            .await?;
+    async fn remove<'a, 'ui, 'st>(
+        &'a self,
+        date_id: &'ui Uuid,
+        user_id: &'st Uuid,
+    ) -> anyhow::Result<()> {
+        let group = self.get_user_group(user_id).await.unwrap().unwrap();
+        sqlx::query!(
+            r#"DELETE FROM dates WHERE id=$1 and user_group=$2"#,
+            date_id,
+            group,
+        )
+        .execute(&self.pool)
+        .await?;
         Ok(())
     }
-    async fn get_all(&self) -> Vec<Date> {
-        match sqlx::query_as!(PgDate, r#"SELECT * FROM dates"#)
+    async fn get_all(&self, user_id: &Uuid) -> Vec<Date> {
+        let group = self.get_user_group(user_id).await.unwrap().unwrap();
+        match sqlx::query_as!(PgDate, r#"SELECT * FROM dates where user_group=$1"#, group)
             .fetch_all(&self.pool)
             .await
         {
@@ -104,37 +160,51 @@ impl Repository for PgRepo {
             }
         }
     }
-    async fn decrement_date_count(&self, _date_id: &uuid::Uuid) -> anyhow::Result<()> {
+    async fn decrement_date_count<'a, 'ui, 'st>(
+        &'a self,
+        date_id: &'ui Uuid,
+        user_id: &'st Uuid,
+    ) -> anyhow::Result<()> {
+        let group = self.get_user_group(user_id).await.unwrap().unwrap();
         sqlx::query!(
-            r#"UPDATE dates SET count_=count_-1 WHERE id = $1 and count_ > 0"#,
-            _date_id
+            r#"UPDATE dates SET count_=count_-1 WHERE id = $1 and count_ > 0 and user_group=$2"#,
+            date_id,
+            group
         )
         .execute(&self.pool)
         .await?;
         Ok(())
     }
-    async fn increment_date_count(&self, _date_id: &uuid::Uuid) -> anyhow::Result<()> {
+    async fn increment_date_count<'a, 'ui, 'st>(
+        &'a self,
+        date_id: &'ui Uuid,
+        user_id: &'st Uuid,
+    ) -> anyhow::Result<()> {
+        let group = self.get_user_group(user_id).await.unwrap().unwrap();
         sqlx::query!(
-            r#"UPDATE dates SET count_=count_+1 WHERE id = $1"#,
-            _date_id
+            r#"UPDATE dates SET count_=count_+1 WHERE id = $1 and user_group=$2"#,
+            date_id,
+            group
         )
         .execute(&self.pool)
         .await?;
         Ok(())
     }
-    async fn update(&self, _date: Date) -> anyhow::Result<()> {
+
+    async fn update(&self, date: Date, user_id: &Uuid) -> anyhow::Result<()> {
+        let group = self.get_user_group(user_id).await.unwrap().unwrap();
         sqlx::query!(
-            r#"UPDATE dates SET count_=$1, name=$2, day=$4, status=$5,  description=$6 WHERE id = $3"#,
-            _date.count,
-            _date.name,
-            _date.id,
-            _date.description.day, 
-            _date.description.status as i32,
-            _date.description.text,
+            r#"UPDATE dates SET count_=$3, name=$4, day=$5, status=$6,  description=$7 WHERE id = $1 and user_group=$2"#,
+            date.id,
+            group,
+            date.count,
+            date.name,
+            date.description.day,
+            date.description.status as i32,
+            date.description.text,
         )
         .execute(&self.pool)
         .await?;
         Ok(())
     }
 }
-

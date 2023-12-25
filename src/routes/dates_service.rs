@@ -10,6 +10,7 @@ use std::collections::HashMap;
 use std::fs::read;
 use tera::{self, Context, Tera};
 use tracing::{error, info, warn};
+use uuid::Uuid;
 
 pub fn dates_service(cfg: &mut ServiceConfig) {
     cfg.service(date_count_increment)
@@ -23,46 +24,74 @@ pub fn dates_service(cfg: &mut ServiceConfig) {
         .service(update_description);
 }
 
-#[post("{date_id}/increment")]
+#[post("{user_id}/{date_id}/increment")]
 async fn date_count_increment(
-    date_id: web::Path<uuid::Uuid>,
+    date_id: web::Path<Uuid>,
+    user_id: web::Data<Uuid>,
     app_state: Data<AppState>,
 ) -> impl Responder {
     let date_id = &date_id;
     tracing::info!("Increment pushed on: {}", &date_id);
-    match app_state.repo.increment_date_count(date_id).await {
-        Ok(_) => HttpResponse::Ok()
-            .body(render_buttons(app_state.repo.get_all().await, &app_state.cache).unwrap()),
+    match app_state.repo.increment_date_count(date_id, &user_id).await {
+        Ok(_) => HttpResponse::Ok().body(
+            render_buttons(
+                app_state.repo.get_all(&user_id).await,
+                &app_state.cache,
+                &user_id,
+            )
+            .unwrap(),
+        ),
         Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
     }
 }
-#[post("{date_id}/decrement")]
+#[post("{user_id}/{date_id}/decrement")]
 async fn date_count_decrement(
-    date_id: web::Path<uuid::Uuid>,
+    date_id: web::Path<Uuid>,
+    user_id: web::Data<Uuid>,
     app_state: Data<AppState>,
 ) -> impl Responder {
     let date_id = &date_id;
     tracing::info!("Decrement pushed on: {}", &date_id);
-    match app_state.repo.decrement_date_count(date_id).await {
-        Ok(_) => HttpResponse::Ok()
-            .body(render_buttons(app_state.repo.get_all().await, &app_state.cache).unwrap()),
+    match app_state.repo.decrement_date_count(date_id, &user_id).await {
+        Ok(_) => HttpResponse::Ok().body(
+            render_buttons(
+                app_state.repo.get_all(&user_id).await,
+                &app_state.cache,
+                &user_id,
+            )
+            .unwrap(),
+        ),
         Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
     }
 }
-#[post("{date_id}/remove")]
-async fn date_remove(date_id: web::Path<uuid::Uuid>, app_state: Data<AppState>) -> impl Responder {
+#[post("{user_id}/{date_id}/remove")]
+async fn date_remove(
+    date_id: web::Path<Uuid>,
+    user_id: web::Data<Uuid>,
+    app_state: Data<AppState>,
+) -> impl Responder {
     let date_id = &date_id;
     tracing::info!("Collapse pushed on: {}", &date_id);
-    match app_state.repo.remove(date_id).await {
-        Ok(_) => HttpResponse::Ok()
-            .body(render_buttons(app_state.repo.get_all().await, &app_state.cache).unwrap()),
+    match app_state.repo.remove(date_id, &user_id).await {
+        Ok(_) => HttpResponse::Ok().body(
+            render_buttons(
+                app_state.repo.get_all(&user_id).await,
+                &app_state.cache,
+                &user_id,
+            )
+            .unwrap(),
+        ),
         Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
     }
 }
-#[get("{date_id}")]
-async fn date_expand(date_id: web::Path<uuid::Uuid>, app_state: Data<AppState>) -> impl Responder {
+#[get("{user_id}/{date_id}")]
+async fn date_expand(
+    date_id: web::Path<Uuid>,
+    user_id: web::Path<Uuid>,
+    app_state: Data<AppState>,
+) -> impl Responder {
     tracing::info!("Expand pushed on: {}", date_id);
-    match app_state.repo.get(&date_id).await {
+    match app_state.repo.get(&date_id, &user_id).await {
         Some(date) => {
             let mut ctx = Context::new();
             ctx.insert("description", &render_description(&date).unwrap());
@@ -70,7 +99,7 @@ async fn date_expand(date_id: web::Path<uuid::Uuid>, app_state: Data<AppState>) 
             let tera = Tera::new("./pages/button/*.html").unwrap();
             match tera.render("button_expanded.html", &ctx) {
                 Ok(resp) => {
-                    app_state.cache.add(*date_id);
+                    app_state.cache.add(*date_id, &user_id);
                     HttpResponse::Ok().body(resp)
                 }
                 Err(e) => {
@@ -82,21 +111,22 @@ async fn date_expand(date_id: web::Path<uuid::Uuid>, app_state: Data<AppState>) 
         None => HttpResponse::InternalServerError().body("Date not found"),
     }
 }
-#[post("{date_id}")]
+#[post("{user_id}/{date_id}")]
 async fn date_collapse(
-    date_id: web::Path<uuid::Uuid>,
+    date_id: web::Path<Uuid>,
+    user_id: web::Path<Uuid>,
     app_state: Data<AppState>,
 ) -> impl Responder {
     let date_id = &date_id;
     tracing::info!("Collapse pushed on: {}", &date_id);
-    match app_state.repo.get(date_id).await {
+    match app_state.repo.get(date_id, &user_id).await {
         Some(date) => {
             let mut ctx = Context::new();
             ctx.insert("date", &date);
             let tera = Tera::new("./pages/button/*.html").unwrap();
             match tera.render("button_collapsed.html", &ctx) {
                 Ok(resp) => {
-                    app_state.cache.remove(&date_id);
+                    app_state.cache.remove(&date_id, &user_id);
                     HttpResponse::Ok().body(resp)
                 }
                 Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
@@ -105,14 +135,15 @@ async fn date_collapse(
         None => HttpResponse::InternalServerError().body("Date not found"),
     }
 }
-#[post("{date_id}/description")]
+#[post("{user_id}/{date_id}/description")]
 async fn update_description(
     new_time: web::Form<HashMap<String, String>>,
-    date_id: web::Path<uuid::Uuid>,
+    date_id: web::Path<Uuid>,
+    user_id: web::Path<Uuid>,
     app_state: Data<AppState>,
 ) -> impl Responder {
     info!("{:?}", new_time);
-    let Some(mut date) = app_state.repo.get(&date_id).await else {
+    let Some(mut date) = app_state.repo.get(&date_id, &user_id).await else {
         return HttpResponse::InternalServerError().body("Date not found");
     };
     let hrs = new_time.get("time").unwrap();
@@ -127,32 +158,35 @@ async fn update_description(
         return HttpResponse::Forbidden().body("Cant parse date");
     };
     date.description.text = new_time.get("description_text").unwrap().clone();
-    app_state.repo.update(date.clone()).await.unwrap();
+    app_state.repo.update(date.clone(), &user_id).await.unwrap();
     HttpResponse::Ok().body(render_description(&date).unwrap())
 }
-#[delete("{date_id}/description")]
+#[delete("{user_id}/{date_id}/description")]
 async fn edit_description(
-    date_id: web::Path<uuid::Uuid>,
+    date_id: web::Path<Uuid>,
+    user_id: web::Path<Uuid>,
     app_state: Data<AppState>,
 ) -> impl Responder {
-    match app_state.repo.get(&date_id).await {
+    match app_state.repo.get(&date_id, &user_id).await {
         Some(date) => HttpResponse::Ok().body(render_editable_description(&date).unwrap()),
         None => HttpResponse::InternalServerError().body("Date not found"),
     }
 }
-#[get("{date_id}/description")]
+#[get("{user_id}/{date_id}/description")]
 async fn get_description(
-    date_id: web::Path<uuid::Uuid>,
+    date_id: web::Path<Uuid>,
+    user_id: web::Path<Uuid>,
     app_state: Data<AppState>,
 ) -> impl Responder {
-    match app_state.repo.get(&date_id).await {
+    match app_state.repo.get(&date_id, &user_id).await {
         Some(date) => HttpResponse::Ok().body(render_description(&date).unwrap()),
         None => HttpResponse::InternalServerError().body("Date not found"),
     }
 }
-#[post("new_date")]
+#[post("{user_id}/new_date")]
 async fn add_new_date(
     new_date: web::Form<HashMap<String, String>>,
+    user_id: web::Path<Uuid>,
     app_state: Data<AppState>,
 ) -> impl Responder {
     tracing::info!(
@@ -164,20 +198,33 @@ async fn add_new_date(
     }
     app_state
         .repo
-        .add(Date::new(new_date.get("new_date").unwrap().clone()))
+        .add(
+            Date::new(new_date.get("new_date").unwrap().clone()),
+            *user_id,
+        )
         .await
         .unwrap();
-    HttpResponse::Ok()
-        .body(render_buttons(app_state.repo.get_all().await, &app_state.cache).unwrap())
+    HttpResponse::Ok().body(
+        render_buttons(
+            app_state.repo.get_all(&user_id).await,
+            &app_state.cache,
+            &user_id,
+        )
+        .unwrap(),
+    )
 }
 
-pub fn render_buttons(dates: Vec<Date>, cache: &ExpansionCache) -> anyhow::Result<String> {
+pub fn render_buttons(
+    dates: Vec<Date>,
+    cache: &ExpansionCache,
+    user_id: &Uuid,
+) -> anyhow::Result<String> {
     let mut rendered_dates = vec![];
     for date in dates {
         let mut ctx = Context::new();
         ctx.insert("date", &date);
         let tera = Tera::new("./pages/button/*.html")?;
-        if cache.contains(&date.id) {
+        if cache.contains(&date.id, user_id) {
             ctx.insert("description", &render_description(&date)?);
             rendered_dates.push(
                 tera.render("button_expanded.html", &ctx)
