@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT user_group FROM users WHERE username=$1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_group",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "1f6ca61205a29d5d2656e5979a1c9ed44ce96334f917231500b4560ccfe83b69"
+}

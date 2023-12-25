@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE dates SET count_=count_-1 WHERE id = $1 and count_ > 0",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3667ff595ed302877ea4a1dbd58fa9bce6573240fd2de9361d63377dd4640140"
+}

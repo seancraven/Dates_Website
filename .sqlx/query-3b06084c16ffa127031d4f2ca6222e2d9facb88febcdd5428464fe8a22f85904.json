@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE dates SET count_=$1, name=$2, day=$4, status=$5,  description=$6 WHERE id = $3",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Varchar",
+        "Uuid",
+        "Timestamptz",
+        "Int4",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3b06084c16ffa127031d4f2ca6222e2d9facb88febcdd5428464fe8a22f85904"
+}
