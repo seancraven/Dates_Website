@@ -1,0 +1,9 @@
+-- Add migration script here
+CREATE TABLE users (
+  username VARCHAR(255) PRIMARY KEY NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  user_group INT
+);
+
