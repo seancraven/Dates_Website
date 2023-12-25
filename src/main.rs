@@ -7,7 +7,7 @@ use actix_web::web::ServiceConfig;
 use domain::postgres_repository::PgRepo;
 use domain::repository::AppState;
 use routes::dates_service::dates_service;
-use routes::index::index;
+use routes::index::{index, landing, search_verification};
 use shuttle_actix_web::ShuttleActixWeb;
 use sqlx::PgPool;
 
@@ -24,7 +24,9 @@ async fn main(
                 .app_data(state.clone())
                 .service(index)
                 .configure(dates_service),
-        );
+        )
+        .service(landing)
+        .service(search_verification);
     };
     Ok(config.into())
 }

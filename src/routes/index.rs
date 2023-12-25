@@ -19,3 +19,12 @@ fn template_load(dates: Vec<Date>, cache: &ExpansionCache) -> anyhow::Result<Str
     Tera::one_off(&std::fs::read_to_string("./pages/index.html")?, &ctx, false)
         .map_err(|e| anyhow!(e))
 }
+
+#[get("/")]
+async fn landing() -> impl Responder {
+    HttpResponse::Ok().body(std::fs::read_to_string("./pages/landing.html").unwrap())
+}
+#[get("/googleb0081feae6701197.html")]
+async fn search_verification() -> impl Responder {
+    HttpResponse::Ok().body(std::fs::read_to_string("./pages/googleb0081feae6701197.html").unwrap())
+}
