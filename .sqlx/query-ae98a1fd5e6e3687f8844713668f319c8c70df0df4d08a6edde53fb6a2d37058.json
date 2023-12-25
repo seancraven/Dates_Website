@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM dates WHERE id=$1 and user_group=$2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ae98a1fd5e6e3687f8844713668f319c8c70df0df4d08a6edde53fb6a2d37058"
+}

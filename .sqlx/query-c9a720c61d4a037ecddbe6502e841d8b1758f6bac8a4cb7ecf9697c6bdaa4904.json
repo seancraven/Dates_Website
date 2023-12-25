@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT user_group FROM users WHERE username=$1",
+  "query": "SELECT user_group FROM users WHERE user_id=$1",
   "describe": {
     "columns": [
       {
@@ -11,12 +11,12 @@
     ],
     "parameters": {
       "Left": [
-        "Text"
+        "Uuid"
       ]
     },
     "nullable": [
       true
     ]
   },
-  "hash": "1f6ca61205a29d5d2656e5979a1c9ed44ce96334f917231500b4560ccfe83b69"
+  "hash": "c9a720c61d4a037ecddbe6502e841d8b1758f6bac8a4cb7ecf9697c6bdaa4904"
 }
