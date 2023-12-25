@@ -30,3 +30,4 @@ shuttle-shared-db = { version = "0.35.2", features = ["postgres"] }
 async-traits = "0.0.0"
 toml = "0.8.8"
 chrono = { version = "0.4.31", features = ["serde"] }
+thiserror = "1.0.51"
