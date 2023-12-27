@@ -1,6 +1,7 @@
 use super::dates::Date;
 use actix_web::web;
 use anyhow::anyhow;
+use serde::Deserialize;
 use shuttle_runtime::async_trait;
 use std::collections::{HashMap, VecDeque};
 use std::sync::Mutex;
@@ -23,6 +24,10 @@ impl AppState {
     }
 }
 
+#[derive(Error, Debug)]
+#[error("User isn't in cache")]
+pub struct MissingUserError;
+
 #[derive(Debug)]
 /// Cache that stores wheather a user has the page open.
 ///
@@ -34,20 +39,21 @@ pub struct ExpansionCache {
 }
 impl ExpansionCache {
     fn add_new_user(&self, user_id: &str) {}
-    pub fn remove(&self, id: &Uuid, user_id: &Uuid) {
+    pub fn remove(&self, id: &Uuid, user_id: &Uuid) -> Result<(), MissingUserError> {
         self.cache
             .lock()
             .unwrap()
             .get_mut(user_id)
-            .unwrap()
+            .ok_or(MissingUserError)?
             .retain(|x| x != id);
+        Ok(())
     }
     /// Adds a date id if the user is in the cache.
     /// Otherwise adds user and date id.
     ///
     /// * `id`:
     /// * `user_id`:
-    pub fn add(&self, id: Uuid, user_id: &Uuid) {
+    pub fn add(&self, id: Uuid, user_id: &Uuid) -> Result<(), MissingUserError> {
         match self.cache.lock().unwrap().get_mut(user_id) {
             Some(user_cache) => user_cache.push(id),
             None => {
@@ -55,7 +61,7 @@ impl ExpansionCache {
                     .lock()
                     .unwrap()
                     .insert(*user_id, vec![id])
-                    .unwrap();
+                    .ok_or(MissingUserError)?;
                 let mut queue = self.queue.lock().unwrap();
                 queue.push_back(*user_id);
                 if queue.len() > self.queue_len {
@@ -64,17 +70,25 @@ impl ExpansionCache {
                 }
             }
         };
+        Ok(())
     }
-    pub fn contains(&self, id: &Uuid, user_id: &Uuid) -> bool {
-        self.cache
+    pub fn contains(&self, id: &Uuid, user_id: &Uuid) -> Result<bool, MissingUserError> {
+        Ok(self
+            .cache
             .lock()
             .unwrap()
             .get(user_id)
-            .unwrap()
-            .contains(id)
+            .ok_or(MissingUserError)?
+            .contains(id))
     }
-    pub fn reset(&self, user_id: &Uuid) {
-        self.cache.lock().unwrap().get_mut(user_id).unwrap().clear();
+    pub fn reset(&self, user_id: &Uuid) -> Result<(), MissingUserError> {
+        Ok(self
+            .cache
+            .lock()
+            .unwrap()
+            .get_mut(user_id)
+            .ok_or(MissingUserError)?
+            .clear())
     }
     pub fn pop_user_cache(&self, user_id: &Uuid) {
         self.cache.lock().unwrap().remove(user_id);
@@ -141,8 +155,9 @@ pub trait Repository {
     /// Check that the user has access to the repository.
     ///
     /// * `user_id`:
-    async fn check_access(&self, user_id: &Uuid) -> bool;
+    async fn check_user_has_access(&self, user_id: &Uuid) -> bool;
 }
+#[derive(Deserialize)]
 pub struct VecRepo {
     dates: Mutex<HashMap<Uuid, Vec<Date>>>,
 }
@@ -155,9 +170,6 @@ impl VecRepo {
 }
 #[async_trait]
 impl Repository for VecRepo {
-    async fn check_access(&self, user_id: &Uuid) -> bool {
-        self.dates.lock().unwrap().contains_key(user_id)
-    }
     async fn add(&self, date: Date, user_id: Uuid) -> Result<(), InsertDateError> {
         let mut map = self.dates.lock().unwrap();
         match map.get_mut(&user_id) {
@@ -178,8 +190,10 @@ impl Repository for VecRepo {
             .iter_mut()
             .find(|d| d.id == new_date.id)
         {
-            date.count = new_date.count;
-            date.name = new_date.name;
+            tracing::info!("Updating date: {:?}", date);
+            tracing::info!("with: {:?}", &new_date);
+
+            *date = new_date;
             Ok(())
         } else {
             Err(anyhow!("{:?} doesn't exist", new_date))
@@ -229,6 +243,7 @@ impl Repository for VecRepo {
     }
 
     async fn get<'a, 'ui, 'st>(&'a self, date_id: &'ui Uuid, user_id: &'st Uuid) -> Option<Date> {
+        tracing::info!("Getting date id: {}, user_id: {}", date_id, user_id);
         if let Some(date) = self
             .dates
             .lock()
@@ -279,6 +294,9 @@ impl Repository for VecRepo {
         }
         Ok(())
     }
+    async fn check_user_has_access(&self, user_id: &Uuid) -> bool {
+        self.dates.lock().unwrap().contains_key(user_id)
+    }
 }
 
 #[cfg(test)]
@@ -290,7 +308,7 @@ mod test {
         let repo = VecRepo::new();
         let date = Date::new("Sexy");
         let id = Uuid::new_v4();
-        repo.add(date.clone(), id.clone()).await.unwrap();
+        repo.add(date.clone(), id).await.unwrap();
         let test_date = repo.get(&date.id, &id).await.unwrap();
         assert_eq!(test_date, date);
     }

@@ -9,28 +9,7 @@ use sqlx::PgPool;
 
 use super::dates::{Date, Description, Status};
 use super::repository::InsertDateError;
-
-#[derive(FromRow, Debug, Clone)]
-pub struct PgUser {
-    pub user_id: Uuid,
-    pub username: String,
-    pub email: String,
-    pub updated_at: DateTime<Utc>,
-    pub created_at: DateTime<Utc>,
-    pub user_group: Option<i32>,
-}
-
-pub struct PgRepo {
-    pub pool: PgPool,
-}
-impl PgRepo {
-    async fn get_user_group(&self, user_id: &Uuid) -> anyhow::Result<Option<i32>> {
-        let user = sqlx::query!(r#"SELECT user_group FROM users WHERE user_id=$1"#, user_id)
-            .fetch_one(&self.pool)
-            .await?;
-        Ok(user.user_group)
-    }
-}
+// Databse structures.
 #[derive(FromRow, Debug, Clone)]
 struct PgDate {
     id: String,
@@ -64,9 +43,32 @@ impl TryInto<Date> for PgDate {
     }
 }
 
+#[derive(FromRow, Debug, Clone)]
+pub struct PgUser {
+    pub user_id: Uuid,
+    pub username: String,
+    pub email: String,
+    pub updated_at: DateTime<Utc>,
+    pub created_at: DateTime<Utc>,
+    pub user_group: Option<i32>,
+}
+
+/// Postgres Repository
+pub struct PgRepo {
+    pub pool: PgPool,
+}
+impl PgRepo {
+    async fn get_user_group(&self, user_id: &Uuid) -> anyhow::Result<Option<i32>> {
+        let user = sqlx::query!(r#"SELECT user_group FROM users WHERE user_id=$1"#, user_id)
+            .fetch_one(&self.pool)
+            .await?;
+        Ok(user.user_group)
+    }
+}
+
 #[async_trait]
 impl Repository for PgRepo {
-    async fn check_access(&self, user_id: &Uuid) -> bool {
+    async fn check_user_has_access(&self, user_id: &Uuid) -> bool {
         match sqlx::query!(r#"SELECT user_group FROM users WHERE user_id=$1"#, user_id)
             .fetch_one(&self.pool)
             .await

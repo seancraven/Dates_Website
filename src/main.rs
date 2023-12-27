@@ -1,13 +1,9 @@
-mod auth;
-mod domain;
-mod routes;
-
+use crate::routes::dates_service;
 use actix_web::web;
 use actix_web::web::ServiceConfig;
-use domain::postgres_repository::PgRepo;
-use domain::repository::{AppState, VecRepo};
-use routes::dates_service::dates_service;
-use routes::index::{index, landing, search_verification};
+use dates::domain::postgres_repository::PgRepo;
+use dates::domain::repository::AppState;
+use dates::routes::index::{index, landing, search_verification};
 use shuttle_actix_web::ShuttleActixWeb;
 use sqlx::PgPool;
 
