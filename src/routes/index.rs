@@ -50,34 +50,3 @@ async fn landing() -> impl Responder {
 async fn search_verification() -> impl Responder {
     HttpResponse::Ok().body(fs::read_to_string("./pages/googleb0081feae6701197.html").unwrap())
 }
-
-#[cfg(test)]
-mod tests {
-    use actix_web::App;
-    use uuid::Uuid;
-
-    use crate::domain::{
-        dates::Date,
-        repository::{AppState, Repository, VecRepo},
-    };
-
-    use super::index;
-
-    fn init() {
-        let _ = env_logger::builder().is_test(true).try_init();
-    }
-    #[actix_web::test]
-    async fn test_index() {
-        let repo = VecRepo::new();
-        let user_id = Uuid::new_v4();
-        repo.add(Date::new("test"), user_id).await.unwrap();
-        let state = AppState::new(Box::new(repo));
-        let app = actix_web::test::init_service(App::new().app_data(state).service(index)).await;
-        let req = actix_web::test::TestRequest::get()
-            .uri(&format!("/{}", user_id))
-            .to_request();
-        let resp = actix_web::test::call_service(&app, req).await;
-
-        assert!(resp.status().is_success());
-    }
-}

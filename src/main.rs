@@ -1,8 +1,8 @@
-use crate::routes::dates_service;
 use actix_web::web;
 use actix_web::web::ServiceConfig;
 use dates::domain::postgres_repository::PgRepo;
 use dates::domain::repository::AppState;
+use dates::routes::dates_service::dates_service;
 use dates::routes::index::{index, landing, search_verification};
 use shuttle_actix_web::ShuttleActixWeb;
 use sqlx::PgPool;
