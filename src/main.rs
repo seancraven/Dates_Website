@@ -10,7 +10,10 @@ use sqlx::PgPool;
 // postgres://postgres:postgres@localhost:17972/postgres
 #[shuttle_runtime::main]
 async fn main(
-    #[shuttle_shared_db::Postgres] pool: PgPool,
+    #[shuttle_shared_db::Postgres(
+        local_uri = "postgres://postgres:assword@localhost:5432/postgres"
+    )]
+    pool: PgPool,
 ) -> ShuttleActixWeb<impl FnOnce(&mut ServiceConfig) + Send + Clone + 'static> {
     sqlx::migrate!().run(&pool).await.unwrap();
     // let state = web::Data::new(AppState::new(Box::new(VecRepo::new())));
