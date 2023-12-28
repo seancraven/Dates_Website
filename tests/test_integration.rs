@@ -99,7 +99,7 @@ mod tests {
         let (state, user_id, _) = mock_db().await;
         let app = test::init_service(App::new().app_data(state).service(add_new_date)).await;
         let mut form = HashMap::new();
-        form.insert("new_date".to_string(), "Test".to_string());
+        form.insert("name".to_string(), "Test".to_string());
         let uri = format!("/{}/new_date", user_id);
         let req = test::TestRequest::post().uri(&uri).set_form(form);
         assert!(test::call_service(&app, req.to_request())
@@ -114,7 +114,7 @@ mod tests {
         let app = test::init_service(App::new().app_data(state).service(add_new_date)).await;
         let uri = format!("/{}/new_date", Uuid::new_v4());
         let mut form = HashMap::new();
-        form.insert("new_date".to_string(), "Test".to_string());
+        form.insert("name".to_string(), "Test".to_string());
         let req = test::TestRequest::post().uri(&uri).set_form(form);
         assert_eq!(
             test::call_service(&app, req.to_request()).await.status(),
@@ -127,7 +127,7 @@ mod tests {
         let (state, user_id, _) = mock_db().await;
         let app = test::init_service(App::new().app_data(state).service(add_new_date)).await;
         let mut form = HashMap::new();
-        form.insert("new_date".to_string(), "".to_string());
+        form.insert("name".to_string(), "".to_string());
         let uri = format!("/{}/new_date", user_id);
         let req = test::TestRequest::post().uri(&uri).set_form(form);
         assert_eq!(
