@@ -246,6 +246,9 @@ async fn add_new_date(
     if !app_state.repo.check_user_has_access(&user_id).await {
         return unauthorized();
     }
+    if new_date.name.is_empty() {
+        return HttpResponse::Forbidden().finish();
+    }
 
     match app_state
         .repo

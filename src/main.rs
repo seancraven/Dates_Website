@@ -1,6 +1,4 @@
-use actix_web::web::ServiceConfig;
-use actix_web::web::{self, Data};
-use dates::backend::in_memory::VecRepo;
+use actix_web::{web, web::ServiceConfig};
 use dates::backend::postgres::PgRepo;
 use dates::domain::repository::AppState;
 use dates::routes::dates_service::{add_new_date, dates_service};
@@ -17,8 +15,6 @@ async fn main(
     pool: PgPool,
 ) -> ShuttleActixWeb<impl FnOnce(&mut ServiceConfig) + Send + Clone + 'static> {
     sqlx::migrate!().run(&pool).await.unwrap();
-    // let state = web::Data::new(AppState::new(Box::new(VecRepo::new())));
-    // let state = AppState::new_in_web_data(Box::new(PgRepo { pool }));
     let config = move |cfg: &mut ServiceConfig| {
         cfg.app_data(AppState::new_in_web_data(Box::new(PgRepo { pool })))
             .service(add_new_date)

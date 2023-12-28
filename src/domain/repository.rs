@@ -56,12 +56,12 @@ impl ExpansionCache {
     ///
     /// * `id`:
     /// * `user_id`:
-    pub fn add(&self, id: Uuid, user_id: &Uuid) {
+    pub fn add(&self, date_id: Uuid, user_id: &Uuid) {
         let mut cache = self.cache.lock().unwrap();
         match cache.get_mut(user_id) {
-            Some(user_cache) => user_cache.push(id),
+            Some(user_cache) => user_cache.push(date_id),
             None => {
-                cache.insert(*user_id, vec![id]);
+                cache.insert(*user_id, vec![date_id]);
                 let mut queue = self.queue.lock().unwrap();
                 queue.push_back(*user_id);
                 if queue.len() > self.queue_len {
@@ -71,14 +71,14 @@ impl ExpansionCache {
             }
         };
     }
-    pub fn contains(&self, id: &Uuid, user_id: &Uuid) -> Result<bool, MissingUserError> {
+    pub fn contains(&self, date_id: &Uuid, user_id: &Uuid) -> Result<bool, MissingUserError> {
         Ok(self
             .cache
             .lock()
             .unwrap()
             .get(user_id)
             .ok_or(MissingUserError)?
-            .contains(id))
+            .contains(date_id))
     }
     pub fn reset(&self, user_id: &Uuid) -> Result<(), MissingUserError> {
         self.cache
@@ -93,13 +93,48 @@ impl ExpansionCache {
         self.cache.lock().unwrap().remove(user_id);
     }
     pub fn new() -> ExpansionCache {
+        let default_cache_size = 1000;
         ExpansionCache {
-            cache: Mutex::new(HashMap::new()),
-            queue: Mutex::new(VecDeque::new()),
-            queue_len: 1000,
+            cache: Mutex::new(HashMap::with_capacity(default_cache_size)),
+            queue: Mutex::new(VecDeque::with_capacity(default_cache_size)),
+            queue_len: default_cache_size,
         }
     }
 }
+#[cfg(test)]
+mod tests {
+    use uuid::Uuid;
+
+    use super::ExpansionCache;
+
+    #[test]
+    fn test_cache_len() {
+        let mut cache = ExpansionCache::new();
+        cache.queue_len = 100;
+        for _ in 0..1000 {
+            let date_id = Uuid::new_v4();
+            let user_id = Uuid::new_v4();
+            cache.add(date_id, &user_id);
+            assert!(cache.cache.lock().unwrap().len() <= 100)
+        }
+    }
+    #[test]
+    fn test_cache_add() {
+        let cache = ExpansionCache::new();
+        let user_id = Uuid::new_v4();
+        cache.add(Uuid::new_v4(), &user_id);
+        assert!(cache.contains(&Uuid::new_v4(), &user_id).unwrap());
+    }
+    #[test]
+    fn test_cache_remove() {
+        let cache = ExpansionCache::new();
+        let user_id = Uuid::new_v4();
+        cache.add(Uuid::new_v4(), &user_id);
+        cache.pop_user_cache(&user_id);
+        assert!(cache.contains(&Uuid::new_v4(), &user_id).is_err());
+    }
+}
+
 #[derive(Error, Debug)]
 pub enum InsertDateError {
     #[error("Query Error")]
