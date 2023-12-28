@@ -122,8 +122,9 @@ mod tests {
     fn test_cache_add() {
         let cache = ExpansionCache::new();
         let user_id = Uuid::new_v4();
-        cache.add(Uuid::new_v4(), &user_id);
-        assert!(cache.contains(&Uuid::new_v4(), &user_id).unwrap());
+        let date_id = Uuid::new_v4();
+        cache.add(date_id, &user_id);
+        assert!(cache.contains(&date_id, &user_id).unwrap());
     }
     #[test]
     fn test_cache_remove() {
