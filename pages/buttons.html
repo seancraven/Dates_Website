@@ -12,11 +12,11 @@
         <input
           placeholder="Enter Date Idea &#x1F60D;"
           type="text"
-          name="new_date"
+          name="name"
           class="text-left col-span-3 shadow rounded border-2 mr-2 p-2 allign-middle"
         />
         <button
-          hx-post="/dates/{{user_id}}/new_date"
+          hx-post="/{{user_id}}/new_date"
           hx-target="#greater_dates"
           hx-trigger="click"
           hx-swap="outerHTML"
