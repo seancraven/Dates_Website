@@ -26,6 +26,7 @@ struct PgDate {
     #[sqlx(default)]
     description: Option<String>,
     status: i32,
+    #[allow(dead_code)]
     user_group: i32,
 }
 impl TryInto<Date> for PgDate {

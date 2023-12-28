@@ -1,4 +1,3 @@
-use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
 use shuttle_runtime::async_trait;
 use sqlx::FromRow;
@@ -30,28 +29,10 @@ pub trait UserRepository {
     async fn get_group_by_email(&self, email: &str) -> anyhow::Result<i32>;
 }
 
-#[derive(Debug, Clone)]
-pub struct UserPair<'a, 'b>(&'a str, &'b str);
-impl<'a, 'b> UserPair<'a, 'b> {
-    fn get_partner(&self, username: &str) -> anyhow::Result<&str> {
-        if username == self.0 {
-            Ok(self.1)
-        } else if username == self.1 {
-            Ok(self.0)
-        } else {
-            Err(anyhow!("User isn't in this pair"))
-        }
-    }
-}
 #[derive(FromRow, Debug, Clone, Deserialize)]
 pub struct UnauthorizedUser {
     pub username: String,
     pub email: String,
-}
-impl UnauthorizedUser {
-    fn new(name: String, username: String, email: String) -> Self {
-        Self { username, email }
-    }
 }
 #[derive(Deserialize, Clone, Debug, Serialize)]
 pub struct AuthorizedUser {

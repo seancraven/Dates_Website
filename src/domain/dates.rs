@@ -4,7 +4,6 @@ use sqlx::sqlx_macros::Type;
 use sqlx::types::chrono::{DateTime, Local};
 use sqlx::types::uuid::Uuid;
 use sqlx::FromRow;
-use std::fmt;
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Type, Deserialize)]
 #[repr(i32)]
@@ -13,15 +12,6 @@ pub enum Status {
     Approved,
     Rejected,
 }
-impl Status {
-    fn to_string(&self) -> String {
-        match self {
-            Status::Suggested => "Suggested".into(),
-            Status::Approved => "Approved".into(),
-            Status::Rejected => "Rejected".into(),
-        }
-    }
-}
 
 #[derive(Debug, Serialize, Clone, PartialEq, FromRow, Deserialize)]
 pub struct Description {
@@ -29,14 +19,16 @@ pub struct Description {
     pub status: Status,
     pub day: Option<DateTime<Local>>,
 }
-impl Description {
-    pub fn default() -> Description {
+impl std::default::Default for Description {
+    fn default() -> Description {
         Description {
             text: "".into(),
             status: Status::Suggested,
             day: None,
         }
     }
+}
+impl Description {
     pub fn new(text: String, status: Status, day: Option<DateTime<Local>>) -> Description {
         Description { text, status, day }
     }
