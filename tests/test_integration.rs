@@ -5,10 +5,11 @@ mod tests {
     use actix_web::web;
     use actix_web::{web::Data, App};
     use chrono::{NaiveDate, NaiveTime};
+    use dates::backend::in_memory::VecRepo;
     use dates::domain::dates::Date;
-    use dates::domain::repository::{AppState, VecRepo};
+    use dates::domain::repository::AppState;
+    use dates::routes::dates_service::index;
     use dates::routes::dates_service::{add_new_date, update_description};
-    use dates::routes::index::index;
     use std::collections::HashMap;
     use uuid::Uuid;
     async fn mock_db() -> (web::Data<AppState>, Uuid, Uuid) {
