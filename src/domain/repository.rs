@@ -1,8 +1,12 @@
+use crate::auth::user::UserRepository;
+
 use super::dates::Date;
 use actix_web::web;
-use anyhow::anyhow;
 use shuttle_runtime::async_trait;
+use std::collections::{HashMap, VecDeque};
 use std::sync::Mutex;
+use thiserror::Error;
+use tracing::info;
 use uuid::Uuid;
 
 pub struct AppState {
@@ -21,155 +25,172 @@ impl AppState {
     }
 }
 
-#[derive(Debug)]
+#[derive(Error, Debug)]
+#[error("User isn't in cache")]
+pub struct MissingUserError;
+
+#[derive(Debug, Default)]
+/// Cache that stores wheather a user has the page open.
+///
+/// * `cache`:
 pub struct ExpansionCache {
-    cache: Mutex<Vec<Uuid>>,
+    cache: Mutex<HashMap<Uuid, Vec<Uuid>>>,
+    queue: Mutex<VecDeque<Uuid>>,
+    queue_len: usize,
 }
 impl ExpansionCache {
-    pub fn remove(&self, id: &Uuid) {
-        self.cache.lock().unwrap().retain(|x| x != id);
+    pub fn remove(&self, date_id: &Uuid, user_id: &Uuid) -> Result<(), MissingUserError> {
+        self.cache
+            .lock()
+            .unwrap()
+            .get_mut(user_id)
+            .ok_or(MissingUserError)?
+            .retain(|x| {
+                info!("removing {:?} from cache", date_id);
+                x != date_id
+            });
+        Ok(())
     }
-    pub fn add(&self, id: Uuid) {
-        self.cache.lock().unwrap().push(id);
+    /// Adds a date id if the user is in the cache.
+    /// Otherwise adds user and date id.
+    ///
+    /// * `id`:
+    /// * `user_id`:
+    pub fn add(&self, date_id: Uuid, user_id: &Uuid) {
+        let mut cache = self.cache.lock().unwrap();
+        match cache.get_mut(user_id) {
+            Some(user_cache) => user_cache.push(date_id),
+            None => {
+                cache.insert(*user_id, vec![date_id]);
+                let mut queue = self.queue.lock().unwrap();
+                queue.push_back(*user_id);
+                if queue.len() > self.queue_len {
+                    let to_drop = queue.pop_front().unwrap();
+                    cache.remove(&to_drop).unwrap();
+                }
+            }
+        };
     }
-    pub fn contains(&self, id: &Uuid) -> bool {
-        self.cache.lock().unwrap().contains(id)
+    pub fn contains(&self, date_id: &Uuid, user_id: &Uuid) -> Result<bool, MissingUserError> {
+        Ok(self
+            .cache
+            .lock()
+            .unwrap()
+            .get(user_id)
+            .ok_or(MissingUserError)?
+            .contains(date_id))
     }
-    pub fn reset(&self) {
-        self.cache.lock().unwrap().clear();
+    pub fn reset(&self, user_id: &Uuid) -> Result<(), MissingUserError> {
+        self.cache
+            .lock()
+            .unwrap()
+            .get_mut(user_id)
+            .ok_or(MissingUserError)?
+            .clear();
+        Ok(())
+    }
+    pub fn pop_user_cache(&self, user_id: &Uuid) {
+        self.cache.lock().unwrap().remove(user_id);
     }
     pub fn new() -> ExpansionCache {
+        let default_cache_size = 1000;
         ExpansionCache {
-            cache: Mutex::new(vec![]),
+            cache: Mutex::new(HashMap::with_capacity(default_cache_size)),
+            queue: Mutex::new(VecDeque::with_capacity(default_cache_size)),
+            queue_len: default_cache_size,
         }
     }
 }
+#[cfg(test)]
+mod tests {
+    use uuid::Uuid;
 
+    use super::ExpansionCache;
+
+    #[test]
+    fn test_cache_len() {
+        let mut cache = ExpansionCache::new();
+        cache.queue_len = 100;
+        for _ in 0..1000 {
+            let date_id = Uuid::new_v4();
+            let user_id = Uuid::new_v4();
+            cache.add(date_id, &user_id);
+            assert!(cache.cache.lock().unwrap().len() <= 100)
+        }
+    }
+    #[test]
+    fn test_cache_add() {
+        let cache = ExpansionCache::new();
+        let user_id = Uuid::new_v4();
+        let date_id = Uuid::new_v4();
+        cache.add(date_id, &user_id);
+        assert!(cache.contains(&date_id, &user_id).unwrap());
+    }
+    #[test]
+    fn test_cache_remove() {
+        let cache = ExpansionCache::new();
+        let user_id = Uuid::new_v4();
+        cache.add(Uuid::new_v4(), &user_id);
+        cache.pop_user_cache(&user_id);
+        assert!(cache.contains(&Uuid::new_v4(), &user_id).is_err());
+    }
+}
+
+#[derive(Error, Debug)]
+pub enum InsertDateError {
+    #[error("Query Error")]
+    QueryError,
+    #[error("User isn't part of a group")]
+    GroupMembershipError,
+}
+#[async_trait]
+pub trait Repository: UserRepository + DateRepository {}
 #[async_trait]
 /// Abstraction over storage, so that it can be in memory or persistent.
 /// The repository shouldn't need to have mutable acess
-pub trait Repository {
+pub trait DateRepository {
     /// Add a date to the repository.
     ///
     /// * `date`:
-    async fn add(&self, date: Date) -> anyhow::Result<()>;
+    async fn add(&self, date: Date, user_id: Uuid) -> Result<(), InsertDateError>;
     /// Remove a date from the repository.
     ///
     /// * `date_id`:
-    async fn remove(&self, date_id: &uuid::Uuid) -> anyhow::Result<()>;
+    async fn remove<'a, 'ui, 'st>(
+        &'a self,
+        date_id: &'ui Uuid,
+        user_id: &'st Uuid,
+    ) -> anyhow::Result<()>;
     /// Return a copy of the repository's contents, sorted by from higest to lowest.
-    async fn get_all(&self) -> Vec<Date>;
+
+    async fn get_all(&self, user_id: &Uuid) -> Vec<Date>;
     /// Update's the repository entry for a given date.
     ///
     /// * `date_name`:
-    async fn update(&self, date: Date) -> anyhow::Result<()>;
+    async fn update(&self, date: Date, user_id: &Uuid) -> anyhow::Result<()>;
     /// Increment the count of a given date.
     ///
     /// * `date_id`: date to increment
-    async fn increment_date_count(&self, date_id: &uuid::Uuid) -> anyhow::Result<()>;
+    async fn increment_date_count<'a, 'ui, 'st>(
+        &'a self,
+        date_id: &'ui Uuid,
+        user_id: &'st Uuid,
+    ) -> anyhow::Result<()>;
     /// Decrement the count of a given date.
     ///
     /// * `date_id`: date to decrement
-    async fn decrement_date_count(&self, date_id: &uuid::Uuid) -> anyhow::Result<()>;
+    async fn decrement_date_count<'a, 'ui, 'st>(
+        &'a self,
+        date_id: &'ui Uuid,
+        user_id: &'st Uuid,
+    ) -> anyhow::Result<()>;
     /// Get a date from the repository.
     ///
     /// * `date_id`:
-    async fn get(&self, date_id: &uuid::Uuid) -> Option<Date>;
-}
+    async fn get<'a, 'ui, 'st>(&'a self, date_id: &'ui Uuid, user_id: &'st Uuid) -> Option<Date>;
 
-pub struct VecRepo {
-    pub dates: Mutex<Vec<Date>>,
-}
-impl VecRepo {
-    pub fn new(dates: Vec<Date>) -> VecRepo {
-        VecRepo {
-            dates: Mutex::new(dates),
-        }
-    }
-}
-#[async_trait]
-impl Repository for VecRepo {
-    async fn add(&self, date: Date) -> anyhow::Result<()> {
-        self.dates.lock().unwrap().push(date);
-        Ok(())
-    }
-    async fn update(&self, new_date: Date) -> anyhow::Result<()> {
-        if let Some(date) = self
-            .dates
-            .lock()
-            .unwrap()
-            .iter_mut()
-            .find(|d| d.id == new_date.id)
-        {
-            date.count = new_date.count;
-            date.name = new_date.name;
-            Ok(())
-        } else {
-            Err(anyhow!("{:?} doesn't exist", new_date))
-        }
-    }
-    async fn increment_date_count(&self, date_id: &uuid::Uuid) -> anyhow::Result<()> {
-        match self
-            .dates
-            .lock()
-            .unwrap()
-            .iter_mut()
-            .find(|x| &x.id == date_id)
-        {
-            Some(date) => Ok(date.add()),
-            None => Err(anyhow::anyhow!("No Date exists to increment.")),
-        }
-    }
-    async fn decrement_date_count(&self, date_id: &uuid::Uuid) -> anyhow::Result<()> {
-        match self
-            .dates
-            .lock()
-            .unwrap()
-            .iter_mut()
-            .find(|x| &x.id == date_id)
-        {
-            Some(date) => Ok(date.minus()),
-            None => Err(anyhow::anyhow!("No Date exists to decrement.")),
-        }
-    }
-
-    async fn get(&self, date_id: &uuid::Uuid) -> Option<Date> {
-        if let Some(date) = self.dates.lock().unwrap().iter().find(|x| &x.id == date_id) {
-            return Some(date.clone());
-        };
-        None
-    }
-    async fn get_all(&self) -> Vec<Date> {
-        let mut v = self.dates.lock().unwrap().clone();
-        v.sort_by(|a, b| b.count.cmp(&a.count));
-        v
-    }
-
-    async fn remove(&self, date_id: &uuid::Uuid) -> anyhow::Result<()> {
-        let mut removal_ind = None;
-        for (i, _date) in self.dates.lock().unwrap().iter().enumerate() {
-            if _date.id == *date_id {
-                removal_ind = Some(i);
-                break;
-            }
-        }
-        if let Some(r_ind) = removal_ind {
-            self.dates.lock().unwrap().remove(r_ind);
-        }
-        Ok(())
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[tokio::test]
-    async fn test_add() {
-        let repo = VecRepo::new(vec![]);
-        let date = Date::new("Sexy");
-        repo.add(date.clone()).await.unwrap();
-        let test_date = repo.get(&date.id).await.unwrap();
-        assert_eq!(test_date, date);
-    }
+    /// Check that the user has access to the repository.
+    ///
+    /// * `user_id`:
+    async fn check_user_has_access(&self, user_id: &Uuid) -> bool;
 }

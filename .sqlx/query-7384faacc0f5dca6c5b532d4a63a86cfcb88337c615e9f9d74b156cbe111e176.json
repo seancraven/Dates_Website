@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE dates SET count_=count_+1 WHERE id = $1 and user_group=$2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7384faacc0f5dca6c5b532d4a63a86cfcb88337c615e9f9d74b156cbe111e176"
+}

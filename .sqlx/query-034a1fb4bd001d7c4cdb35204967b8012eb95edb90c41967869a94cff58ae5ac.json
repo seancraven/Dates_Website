@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT * FROM dates",
+  "query": "SELECT * FROM dates WHERE id=$1 and user_group=$2 ",
   "describe": {
     "columns": [
       {
@@ -32,10 +32,18 @@
         "ordinal": 5,
         "name": "description",
         "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "user_group",
+        "type_info": "Int4"
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Uuid",
+        "Int4"
+      ]
     },
     "nullable": [
       false,
@@ -43,8 +51,9 @@
       false,
       false,
       true,
-      true
+      true,
+      false
     ]
   },
-  "hash": "8b8c7f0abc6f21a68af58c3811836c9f895315f00f735a51749fca65bf0da63a"
+  "hash": "034a1fb4bd001d7c4cdb35204967b8012eb95edb90c41967869a94cff58ae5ac"
 }

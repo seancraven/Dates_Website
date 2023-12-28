@@ -1,42 +1,34 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sqlx;
 use sqlx::sqlx_macros::Type;
 use sqlx::types::chrono::{DateTime, Local};
 use sqlx::types::uuid::Uuid;
 use sqlx::FromRow;
-use std::fmt;
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Type)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Type, Deserialize)]
 #[repr(i32)]
 pub enum Status {
     Suggested,
     Approved,
     Rejected,
 }
-impl Status {
-    fn to_string(&self) -> String {
-        match self {
-            Status::Suggested => "Suggested".into(),
-            Status::Approved => "Approved".into(),
-            Status::Rejected => "Rejected".into(),
-        }
-    }
-}
 
-#[derive(Debug, Serialize, Clone, PartialEq, FromRow)]
+#[derive(Debug, Serialize, Clone, PartialEq, FromRow, Deserialize)]
 pub struct Description {
     pub text: String,
     pub status: Status,
     pub day: Option<DateTime<Local>>,
 }
-impl Description {
-    pub fn default() -> Description {
+impl std::default::Default for Description {
+    fn default() -> Description {
         Description {
             text: "".into(),
             status: Status::Suggested,
             day: None,
         }
     }
+}
+impl Description {
     pub fn new(text: String, status: Status, day: Option<DateTime<Local>>) -> Description {
         Description { text, status, day }
     }
@@ -54,13 +46,13 @@ impl Description {
     }
     pub fn render_status(&self) -> String {
         match self.status {
-            Status::Suggested => "Waiting for approval".into(),
+            Status::Suggested => "Waiting for approval.".into(),
             Status::Approved => "Approved".into(),
             Status::Rejected => "Rejected".into(),
         }
     }
 }
-#[derive(Debug, Serialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Clone, PartialEq, Deserialize)]
 /// Date storage
 ///
 /// * `name`: The name of the date
