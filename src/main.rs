@@ -5,7 +5,6 @@ use dates::routes::dates_service::{add_new_date, dates_service};
 use dates::routes::landing::{create_user, dummy_login, landing, search_verification};
 use shuttle_actix_web::ShuttleActixWeb;
 use sqlx::PgPool;
-
 // postgres://postgres:postgres@localhost:17972/postgres
 #[shuttle_runtime::main]
 async fn main(

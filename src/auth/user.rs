@@ -4,6 +4,7 @@ use sqlx::FromRow;
 use uuid::Uuid;
 
 #[async_trait]
+#[allow(clippy::module_name_repetitions)]
 pub trait UserRepository {
     async fn create_user_and_group(
         &self,
@@ -30,11 +31,13 @@ pub trait UserRepository {
 }
 
 #[derive(FromRow, Debug, Clone, Deserialize)]
+#[allow(clippy::module_name_repetitions)]
 pub struct UnauthorizedUser {
     pub username: String,
     pub email: String,
 }
 #[derive(Deserialize, Clone, Debug, Serialize)]
+#[allow(clippy::module_name_repetitions)]
 pub struct AuthorizedUser {
     pub id: Uuid,
     pub username: String,
@@ -42,6 +45,7 @@ pub struct AuthorizedUser {
     pub user_group: i32,
 }
 impl AuthorizedUser {
+    #[must_use]
     pub fn authorize(user: UnauthorizedUser, group: i32) -> AuthorizedUser {
         AuthorizedUser {
             id: Uuid::new_v4(),
