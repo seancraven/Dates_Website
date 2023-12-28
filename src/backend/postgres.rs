@@ -1,14 +1,20 @@
-use crate::domain::repository::Repository;
+use anyhow::anyhow;
 use chrono::Local;
 use log::error;
 use shuttle_runtime::async_trait;
-use sqlx::types::chrono::{DateTime, Utc};
-use sqlx::types::Uuid;
-use sqlx::FromRow;
-use sqlx::PgPool;
+use sqlx::{
+    types::chrono::{DateTime, Utc},
+    types::Uuid,
+    FromRow, PgPool,
+};
 
-use super::dates::{Date, Description, Status};
-use super::repository::InsertDateError;
+use crate::domain::dates::{Date, Description, Status};
+use crate::domain::repository::InsertDateError;
+use crate::domain::repository::Repository;
+use crate::{
+    auth::user::{AuthorizedUser, UnauthorizedUser, UserRepository},
+    domain::repository::DateRepository,
+};
 // Databse structures.
 #[derive(FromRow, Debug, Clone)]
 struct PgDate {
@@ -65,9 +71,10 @@ impl PgRepo {
         Ok(user.user_group)
     }
 }
-
 #[async_trait]
-impl Repository for PgRepo {
+impl Repository for PgRepo {}
+#[async_trait]
+impl DateRepository for PgRepo {
     async fn check_user_has_access(&self, user_id: &Uuid) -> bool {
         match sqlx::query!(r#"SELECT user_group FROM users WHERE user_id=$1"#, user_id)
             .fetch_one(&self.pool)
@@ -208,5 +215,37 @@ impl Repository for PgRepo {
         .execute(&self.pool)
         .await?;
         Ok(())
+    }
+}
+#[async_trait]
+impl UserRepository for PgRepo {
+    async fn add_user_to_group(
+        &self,
+        user: UnauthorizedUser,
+        group: i32,
+    ) -> anyhow::Result<AuthorizedUser> {
+        let a_user = AuthorizedUser::authorize(user, group);
+        sqlx::query!(
+            r#"INSERT INTO users (user_id, username, email, user_group) VALUES ($1, $2,$3, $4);"#,
+            a_user.id,
+            &a_user.username,
+            &a_user.email,
+            group,
+        )
+        .execute(&self.pool)
+        .await?;
+        Ok(a_user)
+    }
+    async fn create_group(&self) -> anyhow::Result<i32> {
+        sqlx::query_scalar!(r#"INSERT INTO user_groups DEFAULT VALUES RETURNING id;"#)
+            .fetch_one(&self.pool)
+            .await
+            .map_err(|e| anyhow!(e))
+    }
+    async fn get_group_by_email(&self, email: &str) -> anyhow::Result<i32> {
+        sqlx::query_scalar!(r#"SELECT (user_group) FROM users WHERE email=$1"#, email)
+            .fetch_one(&self.pool)
+            .await?
+            .ok_or(anyhow!("No group found from email."))
     }
 }
