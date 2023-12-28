@@ -1,20 +1,35 @@
-use super::super::domain::postgres_repository::PgUser;
 use anyhow::anyhow;
-use serde::Deserialize;
-use sqlx::postgres::PgPool;
-use sqlx::types::chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use shuttle_runtime::async_trait;
 use sqlx::FromRow;
-use tracing::error;
 use uuid::Uuid;
 
-impl From<PgUser> for UnauthorizedUser {
-    fn from(u: PgUser) -> Self {
-        Self {
-            username: u.username,
-            email: u.email,
-        }
+#[async_trait]
+pub trait UserRepository {
+    async fn create_user_and_group(
+        &self,
+        user: UnauthorizedUser,
+    ) -> anyhow::Result<AuthorizedUser> {
+        self.add_user_to_group(user, self.create_group().await?)
+            .await
     }
+    async fn create_user_and_join_by_email(
+        &self,
+        user: UnauthorizedUser,
+        email: &str,
+    ) -> anyhow::Result<AuthorizedUser> {
+        self.add_user_to_group(user, self.get_group_by_email(email).await?)
+            .await
+    }
+    async fn add_user_to_group(
+        &self,
+        user: UnauthorizedUser,
+        group: i32,
+    ) -> anyhow::Result<AuthorizedUser>;
+    async fn create_group(&self) -> anyhow::Result<i32>;
+    async fn get_group_by_email(&self, email: &str) -> anyhow::Result<i32>;
 }
+
 #[derive(Debug, Clone)]
 pub struct UserPair<'a, 'b>(&'a str, &'b str);
 impl<'a, 'b> UserPair<'a, 'b> {
@@ -30,64 +45,28 @@ impl<'a, 'b> UserPair<'a, 'b> {
 }
 #[derive(FromRow, Debug, Clone, Deserialize)]
 pub struct UnauthorizedUser {
-    username: String,
-    email: String,
+    pub username: String,
+    pub email: String,
 }
 impl UnauthorizedUser {
     fn new(name: String, username: String, email: String) -> Self {
         Self { username, email }
     }
-    pub async fn create_user_and_group(self, pool: &PgPool) -> anyhow::Result<AuthorizedUser> {
-        let group = create_group(pool).await?;
-        self.join_group(pool, group).await
-    }
-    pub async fn join_group(
-        self,
-        pool: &PgPool,
-        user_group: i32,
-    ) -> anyhow::Result<AuthorizedUser> {
-        let id = Uuid::new_v4();
-        sqlx::query!(
-            r#"INSERT INTO users (user_id, username, email, user_group) VALUES ($1, $2,$3, $4);"#,
-            id,
-            &self.username,
-            &self.email,
-            user_group,
-        )
-        .execute(pool)
-        .await?;
-        Ok(AuthorizedUser {
-            id,
-            username: self.username,
-            email: self.email,
-            user_group,
-        })
-    }
-    /// Creates a new AuthorizedUser as part of an existing group through an email
-    ///
-    /// * `pool`: PgPool
-    /// * `email`: Email of member that is in group.
-    pub async fn create_and_join_by_email(
-        self,
-        pool: &PgPool,
-        email: &str,
-    ) -> anyhow::Result<AuthorizedUser> {
-        let group = sqlx::query_scalar!(r#"SELECT (user_group) FROM users WHERE email=$1"#, email)
-            .fetch_one(pool)
-            .await?
-            .ok_or(anyhow!("No group found from email."))?;
-        self.join_group(pool, group).await
-    }
 }
+#[derive(Deserialize, Clone, Debug, Serialize)]
 pub struct AuthorizedUser {
-    id: Uuid,
-    username: String,
-    email: String,
-    user_group: i32,
+    pub id: Uuid,
+    pub username: String,
+    pub email: String,
+    pub user_group: i32,
 }
-async fn create_group(pool: &PgPool) -> anyhow::Result<i32> {
-    sqlx::query_scalar!(r#"INSERT INTO user_groups DEFAULT VALUES RETURNING id;"#)
-        .fetch_one(pool)
-        .await
-        .map_err(|e| anyhow!(e))
+impl AuthorizedUser {
+    pub fn authorize(user: UnauthorizedUser, group: i32) -> AuthorizedUser {
+        AuthorizedUser {
+            id: Uuid::new_v4(),
+            username: user.username,
+            email: user.email,
+            user_group: group,
+        }
+    }
 }
