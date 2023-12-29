@@ -1,4 +1,4 @@
-use crate::auth::user::{AuthorizedUser, UserRepository};
+use crate::auth::user::{AuthorizedUser, NoGroupUser, UserRepository};
 use crate::domain::dates::Date;
 use crate::domain::repository::{DateRepository, InsertDateError, Repository};
 use anyhow::anyhow;
@@ -165,23 +165,52 @@ impl UserRepository for VecRepo {
     }
     async fn add_user_to_group(
         &self,
-        user: crate::auth::user::UnauthorizedUser,
+        user: crate::auth::user::NoGroupUser,
         group: i32,
-    ) -> anyhow::Result<crate::auth::user::AuthorizedUser> {
+    ) -> anyhow::Result<crate::auth::user::GroupUser> {
         if self.groups.lock().unwrap().contains(&group) {
-            Ok(AuthorizedUser::authorize(user, group))
+            Ok(user.join_group(group))
         } else {
             Err(anyhow!("Group doesn't exist"))
         }
     }
     async fn get_group_by_email(&self, email: &str) -> anyhow::Result<i32> {
-        self.users
+        match self
+            .users
             .lock()
             .unwrap()
             .iter()
-            .find(|u| u.email == email)
-            .ok_or(anyhow!("Can't find user"))
-            .map(|u| u.user_group)
+            .find(|u| match u {
+                AuthorizedUser::GroupUser(u) => u.email == email,
+                AuthorizedUser::NoGroupUser(u) => u.email == email,
+            })
+            .ok_or(anyhow!("Can't find user"))?
+        {
+            AuthorizedUser::GroupUser(u) => Ok(u.user_group),
+            AuthorizedUser::NoGroupUser(_) => Err(anyhow!("User is not part of a group.")),
+        }
+    }
+    async fn change_user_password(
+        &self,
+        user: AuthorizedUser,
+        new_password: secrecy::Secret<String>,
+    ) -> anyhow::Result<AuthorizedUser> {
+        todo!();
+    }
+    async fn remove_user(&self, user_id: &Uuid) -> anyhow::Result<()> {
+        todo!()
+    }
+    async fn validate_user(
+        &self,
+        user: &crate::auth::user::UnauthorizedUser,
+    ) -> Result<AuthorizedUser, crate::auth::user::UserValidationError> {
+        todo!();
+    }
+    async fn create_authorized_user(
+        &self,
+        user: crate::auth::user::UnauthorizedUser,
+    ) -> anyhow::Result<NoGroupUser> {
+        todo!();
     }
 }
 
