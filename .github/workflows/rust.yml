@@ -21,11 +21,11 @@ jobs:
       - uses: actions/checkout@v3
       - name: SQLX
         run: cargo install sqlx-cli --no-default-features --features native-tls,postgres
-      - name: SQLX migrate
-        run: cargo sqlx migrate run
       - name: Build
         run: |
           export DATABASE_URL=postgres://postgres:assword@localhost:5432/postgres
           cargo build --verbose
+      - name: SQLX migrate
+        run: cargo sqlx migrate run
       - name: Run tests
         run: cargo test --verbose
