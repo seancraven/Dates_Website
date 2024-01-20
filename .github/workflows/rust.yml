@@ -1,22 +1,31 @@
 name: Rust
 
 on:
-  push:
-    branches: [ "main" ]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-
+  db:
     runs-on: ubuntu-latest
-
     steps:
-    - uses: actions/checkout@v3
-    - name: Build
-      run: cargo build --verbose
-    - name: Run tests
-      run: cargo test --verbose
+      - uses: actions/checkout@v3
+      - uses: isbang/compose-action@v1.5.1
+        with:
+          compose-file: "./docker-compose.yml"
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: SQLX
+        run: cargo install sqlx-cli --no-default-features --features native-tls,postgres
+      - name: SQLX migrate
+        run: cargo sqxl migrate
+      - name: Build
+        run: |
+          export DATABASE_URL=postgres://postgres:assword@localhost:5432/postgres
+          cargo build --verbose
+      - name: Run tests
+        run: cargo test --verbose
