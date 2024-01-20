@@ -5,6 +5,7 @@ use crate::domain::repository::AppState;
 use actix_web::{get, web::Data, HttpResponse, Responder};
 use tera::{Context, Tera};
 use tracing::{error, info};
+use uuid::Uuid;
 
 pub fn unauthorized() -> HttpResponse {
     HttpResponse::Unauthorized().body(fs::read_to_string("./pages/disallowed.html").unwrap())
@@ -28,6 +29,7 @@ async fn search_verification() -> impl Responder {
 async fn create_user(app_state: Data<AppState>) -> HttpResponse {
     // TODO: Hack to get working fast.
     let user_info = NoGroupUser {
+        id: Uuid::new_v4(),
         email: String::from("dave@dave.com"),
         username: String::from("dave"),
     };
