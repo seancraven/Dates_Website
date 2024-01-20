@@ -8,17 +8,14 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  db:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: isbang/compose-action@v1.5.1
-        with:
-          compose-file: "./docker-compose.yml"
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - uses: isbang/compose-action@v1.5.1
+      - name: Compose Up
+        with:
+          compose-file: "./docker-compose.yml"
       - name: SQLX
         run: cargo install sqlx-cli --no-default-features --features native-tls,postgres
       - name: Build
