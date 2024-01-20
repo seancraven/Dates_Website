@@ -8,7 +8,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  Test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -23,8 +23,15 @@ jobs:
           export DATABASE_URL=postgres://postgres:assword@localhost:5432/postgres
           cargo build --verbose
       - name: SQLX migrate
-        run: cargo sqlx migrate run
+        run: |
+
+          export DATABASE_URL=postgres://postgres:assword@localhost:5432/postgres
+          cargo sqlx migrate run
       - name: SQLX prepare
-        run: cargo sqlx prepare
+        run: |
+          export DATABASE_URL=postgres://postgres:assword@localhost:5432/postgres
+          cargo sqlx prepare
       - name: Run tests
-        run: cargo test --verbose
+        run: |
+          export DATABASE_URL=postgres://postgres:assword@localhost:5432/postgres
+          cargo test --verbose
