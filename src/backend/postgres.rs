@@ -288,16 +288,21 @@ impl UserRepository for PgRepo {
         .await
         .context("Query failed.")?;
         let password_hash = PasswordHash::new(
-            &expectec_user
+            expectec_user
                 .password_hash
+                .as_ref()
                 .ok_or(UserValidationError::PasswordError(anyhow!("No Password.")))?,
         )
         .context("Parsing hash failed")?;
-        verify_password_hash(user.password, Secret::new(password_hash.to_string()))
-            .await
-            .map_err(|e| UserValidationError::PasswordError(e.into()))?;
+        verify_password_hash(
+            user.password.clone(),
+            Secret::new(password_hash.to_string()),
+        )
+        .await
+        .map_err(|e| UserValidationError::PasswordError(e.into()))?;
         Ok(expectec_user.into_user())
     }
+
     async fn remove_user(&self, user_id: &Uuid) -> anyhow::Result<()> {
         todo!();
     }
