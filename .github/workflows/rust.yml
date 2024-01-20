@@ -27,5 +27,7 @@ jobs:
           cargo build --verbose
       - name: SQLX migrate
         run: cargo sqlx migrate run
+      - name: SQLX prepare
+        run: cargo sqlx prepare
       - name: Run tests
         run: cargo test --verbose
