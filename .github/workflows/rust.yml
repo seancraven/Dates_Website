@@ -32,7 +32,7 @@ jobs:
           sudo apt-get install libpq-dev -y
           cargo install sqlx-cli --no-default-features --features postgres
           sqlx database create
-          sqlx database migrate
+          sqlx migrate run
       - uses: actions-rs/cargo@v1
         with:
           command: test
