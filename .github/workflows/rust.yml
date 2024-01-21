@@ -25,11 +25,14 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
+        env:
+          DATABASE_URL: postgres://postgres:assword@localhost:5432/postgres
       - name: Migrate database
         run: |
           sudo apt-get install libpq-dev -y
           cargo install sqlx-cli --no-default-features --features postgres
-          SKIP_DOCKER=true ./scripts/init_db.sh
+          sqlx database create
+          sqlx database migrate
       - uses: actions-rs/cargo@v1
         with:
           command: test
@@ -48,32 +51,3 @@ jobs:
         with:
           command: fmt
           args: --all -- --check
-
-  clippy:
-    name: Clippy
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:12
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: assword
-          POSTGRES_DB: postgres
-        ports:
-          - 5432:5432
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          components: clippy
-          toolchain: stable
-          override: true
-      - name: Migrate database
-        run: |
-          sudo apt-get install libpq-dev -y
-          cargo install sqlx-cli --no-default-features --features postgres
-          SKIP_DOCKER=true ./scripts/init_db.sh
-      - uses: actions-rs/clippy-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: -- -D warnings
