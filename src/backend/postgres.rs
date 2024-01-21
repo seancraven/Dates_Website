@@ -1,6 +1,8 @@
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
+use argon2::PasswordHash;
 use chrono::Local;
 use log::error;
+use secrecy::{ExposeSecret, Secret};
 use shuttle_runtime::async_trait;
 use sqlx::{
     types::chrono::{DateTime, Utc},
@@ -8,12 +10,21 @@ use sqlx::{
     FromRow, PgPool,
 };
 
-use crate::domain::dates::{Date, Description, Status};
-use crate::domain::repository::InsertDateError;
-use crate::domain::repository::Repository;
 use crate::{
-    auth::user::{AuthorizedUser, UnauthorizedUser, UserRepository},
+    auth::user::{GroupUser, UserValidationError},
+    domain::repository::InsertDateError,
+};
+use crate::{
+    auth::user::{NoGroupUser, UserRepository},
     domain::repository::DateRepository,
+};
+use crate::{auth::verify_password_hash, domain::repository::Repository};
+use crate::{
+    auth::{
+        compute_password_hash,
+        user::{AuthorizedUser, UnauthorizedUser},
+    },
+    domain::dates::{Date, Description, Status},
 };
 // Databse structures.
 #[derive(FromRow, Debug, Clone)]
@@ -48,16 +59,6 @@ impl TryInto<Date> for PgDate {
             ),
         })
     }
-}
-
-#[derive(FromRow, Debug, Clone)]
-pub struct PgUser {
-    pub user_id: Uuid,
-    pub username: String,
-    pub email: String,
-    pub updated_at: DateTime<Utc>,
-    pub created_at: DateTime<Utc>,
-    pub user_group: Option<i32>,
 }
 
 /// Postgres Repository
@@ -218,14 +219,37 @@ impl DateRepository for PgRepo {
         Ok(())
     }
 }
+#[derive(FromRow, Debug, Clone)]
+pub struct PgUser {
+    pub user_id: Uuid,
+    pub username: String,
+    pub email: String,
+    pub password_hash: Option<String>,
+    pub updated_at: DateTime<Utc>,
+    pub created_at: DateTime<Utc>,
+    pub user_group: Option<i32>,
+}
+impl PgUser {
+    fn into_user(self) -> AuthorizedUser {
+        match self.user_group {
+            Some(g) => AuthorizedUser::GroupUser(GroupUser {
+                id: self.user_id,
+                username: self.username,
+                email: self.email,
+                user_group: g,
+            }),
+            None => AuthorizedUser::NoGroupUser(NoGroupUser {
+                id: self.user_id,
+                username: self.username,
+                email: self.email,
+            }),
+        }
+    }
+}
 #[async_trait]
 impl UserRepository for PgRepo {
-    async fn add_user_to_group(
-        &self,
-        user: UnauthorizedUser,
-        group: i32,
-    ) -> anyhow::Result<AuthorizedUser> {
-        let a_user = AuthorizedUser::authorize(user, group);
+    async fn add_user_to_group(&self, user: NoGroupUser, group: i32) -> anyhow::Result<GroupUser> {
+        let a_user = user.join_group(group);
         sqlx::query!(
             r#"INSERT INTO users (user_id, username, email, user_group) VALUES ($1, $2,$3, $4);"#,
             a_user.id,
@@ -234,7 +258,8 @@ impl UserRepository for PgRepo {
             group,
         )
         .execute(&self.pool)
-        .await?;
+        .await
+        .context("Query failed.")?;
         Ok(a_user)
     }
     async fn create_group(&self) -> anyhow::Result<i32> {
@@ -248,5 +273,88 @@ impl UserRepository for PgRepo {
             .fetch_one(&self.pool)
             .await?
             .ok_or(anyhow!("No group found from email."))
+    }
+    async fn validate_user(
+        &self,
+        user: &UnauthorizedUser,
+    ) -> Result<AuthorizedUser, crate::auth::user::UserValidationError> {
+        let expectec_user = sqlx::query_as!(
+            PgUser,
+            r#"SELECT * FROM users WHERE username=$1 and email=$2;"#,
+            user.username,
+            user.email,
+        )
+        .fetch_one(&self.pool)
+        .await
+        .context("Query failed.")?;
+        let password_hash = PasswordHash::new(
+            expectec_user
+                .password_hash
+                .as_ref()
+                .ok_or(UserValidationError::PasswordError(anyhow!("No Password.")))?,
+        )
+        .context("Parsing hash failed")?;
+        verify_password_hash(
+            user.password.clone(),
+            Secret::new(password_hash.to_string()),
+        )
+        .await
+        .map_err(|e| UserValidationError::PasswordError(e.into()))?;
+        Ok(expectec_user.into_user())
+    }
+
+    async fn remove_user(&self, user_id: &Uuid) -> anyhow::Result<()> {
+        todo!();
+    }
+    async fn create_authorized_user(&self, user: UnauthorizedUser) -> anyhow::Result<NoGroupUser> {
+        let password_hash = compute_password_hash(user.password).await?;
+        let new_authorized_user = NoGroupUser {
+            id: Uuid::new_v4(),
+            username: user.username,
+            email: user.email,
+        };
+        sqlx::query!(
+            r#"INSERT INTO users (user_id, username, email, password_hash) VALUES ($1, $2, $3, $4);"#,
+            new_authorized_user.id,
+            new_authorized_user.username,
+            new_authorized_user.email,
+            password_hash.expose_secret(),
+        ).execute(&self.pool).await.context("Query error")?;
+        Ok(new_authorized_user)
+    }
+    async fn change_user_password(
+        &self,
+        user: AuthorizedUser,
+        new_password: secrecy::Secret<String>,
+    ) -> anyhow::Result<AuthorizedUser> {
+        todo!();
+    }
+}
+#[cfg(test)]
+mod test {
+    use super::*;
+    use sqlx::PgPool;
+    use tracing;
+    fn tracing_once() {
+        let _ = tracing_subscriber::fmt()
+            .with_max_level(tracing::Level::DEBUG)
+            .try_init();
+    }
+
+    #[tokio::test]
+    async fn test_repo() -> anyhow::Result<()> {
+        tracing_once();
+        let pool = PgPool::connect("postgres://postgres:assword@localhost:5432/postgres")
+            .await
+            .unwrap();
+        let repo = PgRepo { pool };
+        let no_g_use = NoGroupUser {
+            id: Uuid::new_v4(),
+            username: String::from("Test"),
+            email: String::from("test"),
+        };
+        let g = repo.create_user_and_group(no_g_use).await?;
+        repo.add(Date::new("Test"), g.id).await?;
+        Ok(())
     }
 }

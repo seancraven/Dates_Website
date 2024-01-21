@@ -1,12 +1,11 @@
 services:
   db:
-    image: postgres:latest  # Use a specific PostgreSQL version
-    restart: always  # Restart the container if it fails
+    image: postgres:latest # Use a specific PostgreSQL version
+    restart: always # Restart the container if it fails
     environment:
       POSTGRES_PASSWORD: assword # Set the database password
-      POSTGRES_USER: postgres 
+      POSTGRES_USER: postgres
       POSTGRES_DB: postgres
     ports:
-      - "5432:5432"  # Map host port 5432 to container port 5432
-
+      - "5432:5432" # Map host port 5432 to container port 5432
 
