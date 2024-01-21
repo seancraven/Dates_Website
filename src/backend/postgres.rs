@@ -330,3 +330,31 @@ impl UserRepository for PgRepo {
         todo!();
     }
 }
+#[cfg(test)]
+mod test {
+    use super::*;
+    use sqlx::PgPool;
+    use tracing;
+    fn tracing_once() {
+        let _ = tracing_subscriber::fmt()
+            .with_max_level(tracing::Level::DEBUG)
+            .try_init();
+    }
+
+    #[tokio::test]
+    async fn test_repo() -> anyhow::Result<()> {
+        tracing_once();
+        let pool = PgPool::connect("postgres://postgres:assword@localhost:5432/postgres")
+            .await
+            .unwrap();
+        let repo = PgRepo { pool };
+        let no_g_use = NoGroupUser {
+            id: Uuid::new_v4(),
+            username: String::from("Test"),
+            email: String::from("test"),
+        };
+        let g = repo.create_user_and_group(no_g_use).await?;
+        repo.add(Date::new("Test"), g.id).await?;
+        Ok(())
+    }
+}
