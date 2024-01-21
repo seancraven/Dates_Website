@@ -31,7 +31,6 @@ mod tests {
     async fn mock_user(state: &AppState) -> anyhow::Result<GroupUser> {
         let mock_user = NoGroupUser {
             id: Uuid::new_v4(),
-            username: String::from("integration test"),
             email: String::from("integration@test.com"),
         };
         state.repo.create_user_and_group(mock_user).await
