@@ -1,19 +1,49 @@
 use std::fs;
 
-use crate::auth::user::NoGroupUser;
+use crate::auth::user::{AuthorizedUser, NoGroupUser, UnauthorizedUser};
 use crate::domain::repository::AppState;
-use actix_web::{get, web::Data, HttpResponse, Responder};
+use crate::routes::dates_service::render_dates;
+use actix_web::Result;
+use actix_web::{
+    get, post,
+    web::{self, Data},
+    HttpResponse, Responder,
+};
+use anyhow::anyhow;
 use tera::{Context, Tera};
 use tracing::{error, info};
 use uuid::Uuid;
 
-pub fn unauthorized() -> HttpResponse {
-    HttpResponse::Unauthorized().body(fs::read_to_string("./pages/disallowed.html").unwrap())
+pub fn unauthorized() -> Result<HttpResponse, std::io::Error> {
+    Ok(HttpResponse::Unauthorized().body(fs::read_to_string("./pages/disallowed.html")?))
 }
 
 #[get("/")]
 async fn landing() -> impl Responder {
     HttpResponse::Ok().body(fs::read_to_string("./pages/landing.html").unwrap())
+}
+#[post("/")]
+async fn login_register(
+    app_state: Data<AppState>,
+    form: web::Form<UnauthorizedUser>,
+) -> Result<impl Responder> {
+    let Ok(user) = app_state.repo.validate_user(&form).await else {
+        let body = fs::read_to_string("./pages/landing.html")?;
+        return Ok(HttpResponse::Unauthorized().body(body));
+    };
+
+    match user {
+        AuthorizedUser::GroupUser(u) => {
+            let dates = app_state.repo.get_all(&u.id).await;
+            let dates = render_dates(dates, &app_state.cache, &u.id)
+                .map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
+            Ok(HttpResponse::Ok().body(dates))
+        }
+        AuthorizedUser::NoGroupUser(_) => {
+            let body = fs::read_to_string("./pages/user.html")?;
+            Ok(HttpResponse::Ok().body(body))
+        }
+    }
 }
 // TODO: This is a dummy version of the login page.
 #[get("/login")]
@@ -31,7 +61,6 @@ async fn create_user(app_state: Data<AppState>) -> HttpResponse {
     let user_info = NoGroupUser {
         id: Uuid::new_v4(),
         email: String::from("dave@dave.com"),
-        username: String::from("dave"),
     };
     info!("Creating user: {:?}", &user_info);
 
