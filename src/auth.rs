@@ -1,6 +1,6 @@
 pub mod user;
 
-use anyhow::{anyhow, Context};
+use anyhow::Context;
 use argon2::{
     password_hash::SaltString, Algorithm, Argon2, Params, PasswordHash, PasswordHasher,
     PasswordVerifier, Version,
