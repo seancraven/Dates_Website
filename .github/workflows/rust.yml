@@ -25,9 +25,9 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
+      - name: Migrate database
         env:
           DATABASE_URL: postgres://postgres:assword@localhost:5432/postgres
-      - name: Migrate database
         run: |
           sudo apt-get install libpq-dev -y
           cargo install sqlx-cli --no-default-features --features postgres
