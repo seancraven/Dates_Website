@@ -1,25 +1,58 @@
 <!doctype html>
 <html lang="en">
-<meta charset="utf-8" />
+  <meta charset="utf-8" />
 
-<head>
-  <script src="https://unpkg.com/htmx.org@1.9.9"
-    integrity="sha384-QFjmbokDn2DjBjq+fM+8LUIVrAgqcNW2s0PjAxHETgRn9l4fvX31ZxDxvwQnyMOX"
-    crossorigin="anonymous"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <title>Date.rs</title>
-  <meta name="google-site-verification" content="iQ5iaJ8KAop21SIlNS__EofP2T-MaPy_PhV2Zjmzytw" />
-</head>
+  <head>
+    <script
+      src="https://unpkg.com/htmx.org@1.9.9"
+      integrity="sha384-QFjmbokDn2DjBjq+fM+8LUIVrAgqcNW2s0PjAxHETgRn9l4fvX31ZxDxvwQnyMOX"
+      crossorigin="anonymous"
+    ></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Date.rs</title>
+    <meta
+      name="google-site-verification"
+      content="iQ5iaJ8KAop21SIlNS__EofP2T-MaPy_PhV2Zjmzytw"
+    />
+  </head>
 
-<body>
-  <div class="flex flex-col justify-center items-center h-screen w-screen bg-grey-lighter">
-    <button
-      class="text-center font-bold justify-center hover:bg-cyan-50 font-sans text-2xl mb-4 cols-span-1 p-2 rounded border-2">
-      <h1 id="content">
-        <a href="dates/64308658-e043-4afd-b207-cef65569ea33">Dates.rs</a>
-      </h1>
-    </button>
-  </div>
-</body>
-
+  <body>
+    <div
+      class="flex flex-col justify-center items-center h-screen w-screen bg-grey-lighter"
+    >
+      <button
+        class="text-center font-bold justify-center hover:bg-cyan-50 font-sans text-2xl mb-4 cols-span-1 p-2 rounded border-2"
+      >
+        <h1 id="content">
+          <a href="">Dates.rs</a>
+        </h1>
+        <form>
+          <div class="grid-cols-2">
+            <input
+              placeholder="email"
+              type="text"
+              name="username"
+              class="col-span-2"
+            />
+            <input
+              placeholder="password"
+              type="text"
+              name="username"
+              class="col-span-2"
+            />
+            <button
+              class="col-span-1 allign-middle p-2 ml-2 mr-2 border-2 rounded hover:font-bold border-grey hover:bg-grey"
+            >
+              Login
+            </button>
+            <button
+              class="col-span-1 allign-middle p-2 ml-2 mr-2 border-2 rounded hover:font-bold border-grey hover:bg-grey"
+            >
+              Register
+            </button>
+          </div>
+        </form>
+      </button>
+    </div>
+  </body>
 </html>
