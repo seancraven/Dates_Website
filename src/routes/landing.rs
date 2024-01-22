@@ -3,24 +3,26 @@ use std::fs;
 use crate::auth::user::{AuthorizedUser, NoGroupUser, UnauthorizedUser};
 use crate::domain::repository::AppState;
 use crate::routes::dates_service::render_dates;
+use actix_web::error::ErrorInternalServerError;
 use actix_web::Result;
 use actix_web::{
     get, post,
     web::{self, Data},
     HttpResponse, Responder,
 };
-use anyhow::anyhow;
 use tera::{Context, Tera};
 use tracing::{error, info};
 use uuid::Uuid;
 
-pub fn unauthorized() -> Result<HttpResponse, std::io::Error> {
-    Ok(HttpResponse::Unauthorized().body(fs::read_to_string("./pages/disallowed.html")?))
+pub fn unauthorized() -> Result<HttpResponse> {
+    Ok(HttpResponse::Unauthorized()
+        .body(fs::read_to_string("./pages/disallowed.html").map_err(ErrorInternalServerError)?))
 }
 
 #[get("/")]
-async fn landing() -> impl Responder {
-    HttpResponse::Ok().body(fs::read_to_string("./pages/landing.html").unwrap())
+async fn landing() -> Result<impl Responder> {
+    Ok(HttpResponse::Ok()
+        .body(fs::read_to_string("./pages/landing.html").map_err(ErrorInternalServerError)?))
 }
 #[post("/")]
 async fn login_register(
@@ -35,8 +37,8 @@ async fn login_register(
     match user {
         AuthorizedUser::GroupUser(u) => {
             let dates = app_state.repo.get_all(&u.id).await;
-            let dates = render_dates(dates, &app_state.cache, &u.id)
-                .map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
+            let dates =
+                render_dates(dates, &app_state.cache, &u.id).map_err(ErrorInternalServerError)?;
             Ok(HttpResponse::Ok().body(dates))
         }
         AuthorizedUser::NoGroupUser(_) => {
@@ -47,16 +49,20 @@ async fn login_register(
 }
 // TODO: This is a dummy version of the login page.
 #[get("/login")]
-async fn dummy_login() -> impl Responder {
-    HttpResponse::Ok().body(fs::read_to_string("./pages/dummy_login.html").unwrap())
+async fn dummy_login() -> Result<impl Responder> {
+    Ok(HttpResponse::Ok()
+        .body(fs::read_to_string("./pages/dummy_login.html").map_err(ErrorInternalServerError)?))
 }
 #[get("/googleb0081feae6701197.html")]
-async fn search_verification() -> impl Responder {
-    HttpResponse::Ok().body(fs::read_to_string("./pages/googleb0081feae6701197.html").unwrap())
+async fn search_verification() -> Result<impl Responder> {
+    Ok(HttpResponse::Ok().body(
+        fs::read_to_string("./pages/googleb0081feae6701197.html")
+            .map_err(ErrorInternalServerError)?,
+    ))
 }
 
 #[get("/login/get_new_user")]
-async fn create_user(app_state: Data<AppState>) -> HttpResponse {
+async fn create_user(app_state: Data<AppState>) -> Result<HttpResponse> {
     // TODO: Hack to get working fast.
     let user_info = NoGroupUser {
         id: Uuid::new_v4(),
@@ -73,19 +79,18 @@ async fn create_user(app_state: Data<AppState>) -> HttpResponse {
             info!("Created User: {:?}", user);
             let mut ctx = Context::new();
             ctx.insert("user", &user);
-            HttpResponse::Ok().body(
+            Ok(HttpResponse::Ok().body(
                 Tera::one_off(
-                    &fs::read_to_string("./pages/user.html").unwrap(),
+                    &fs::read_to_string("./pages/user.html").map_err(ErrorInternalServerError)?,
                     &ctx,
                     false,
                 )
-                .unwrap(),
-            )
+                .map_err(ErrorInternalServerError)?,
+            ))
         }
         Err(e) => {
             error!("{:?}", e);
             error!("Failed to create user: {:?}", user_info);
-
             unauthorized()
         }
     }
