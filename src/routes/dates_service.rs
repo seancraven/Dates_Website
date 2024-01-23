@@ -83,7 +83,7 @@ async fn date_count_decrement(
         .repo
         .decrement_date_count(date_id, &user_id)
         .await
-        .map_err(ErrorInternalServerError);
+        .map_err(ErrorInternalServerError)?;
     Ok(HttpResponse::Ok().body(render_dates(
         app_state.repo.get_all(&user_id).await,
         &app_state.cache,
