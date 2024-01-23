@@ -24,14 +24,13 @@ async fn landing() -> Result<impl Responder> {
     Ok(HttpResponse::Ok()
         .body(fs::read_to_string("./pages/landing.html").map_err(ErrorInternalServerError)?))
 }
-#[post("/")]
-async fn login_register(
+#[get("/login")]
+async fn login(
     app_state: Data<AppState>,
     form: web::Form<UnauthorizedUser>,
 ) -> Result<impl Responder> {
     let Ok(user) = app_state.repo.validate_user(&form).await else {
-        let body = fs::read_to_string("./pages/landing.html")?;
-        return Ok(HttpResponse::Unauthorized().body(body));
+        return Ok(HttpResponse::Unauthorized().body("Not a valid user."));
     };
 
     match user {
@@ -47,11 +46,9 @@ async fn login_register(
         }
     }
 }
-// TODO: This is a dummy version of the login page.
-#[get("/login")]
-async fn dummy_login() -> Result<impl Responder> {
-    Ok(HttpResponse::Ok()
-        .body(fs::read_to_string("./pages/dummy_login.html").map_err(ErrorInternalServerError)?))
+#[post("/register")]
+async fn register() -> Result<HttpResponse> {
+    todo!();
 }
 #[get("/googleb0081feae6701197.html")]
 async fn search_verification() -> Result<impl Responder> {
