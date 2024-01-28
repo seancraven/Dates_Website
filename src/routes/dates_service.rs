@@ -21,6 +21,7 @@ use uuid::Uuid;
 
 pub fn dates_service(cfg: &mut ServiceConfig) {
     cfg.service(index)
+        .service(add_new_date)
         .service(date_count_increment)
         .service(date_count_decrement)
         .service(date_remove)
