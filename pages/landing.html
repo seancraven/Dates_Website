@@ -1,7 +1,6 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" id="page">
   <meta charset="utf-8" />
-
   <head>
     <script
       src="https://unpkg.com/htmx.org@1.9.9"
@@ -15,43 +14,37 @@
       content="iQ5iaJ8KAop21SIlNS__EofP2T-MaPy_PhV2Zjmzytw"
     />
   </head>
-
   <body>
     <div
       class="flex flex-col justify-center items-center h-screen w-screen bg-grey-lighter"
     >
       <h1 id="content" , class="p-2 text-xl font-bold">Dates.rs</h1>
-      <form>
+      <form id="user" action="login" method="post">
         <div class="grid grid-cols-2">
           <input
             placeholder="email"
             type="text"
-            name="username"
+            name="email"
             class="col-span-2 p-2 border-2 rounded border-grey hover:bg-grey"
           />
           <input
             placeholder="password"
             type="text"
-            name="username"
+            name="password"
             class="col-span-2 p-2 border-2 rounded border-grey hover:bg-grey"
           />
-          <button
+          <input
+            type="submit"
+            value="Login"
             class="col-span-1 allign-middle p-2 border-2 rounded hover:font-bold border-grey hover:bg-grey"
-            hx-trigger="click"
-            hx-swap="none"
-            hx-get="/login"
-          >
-            Login
-          </button>
-          <button
+          />
+          <input
+            type="submit"
+            value="Register"
             class="col-span-1 allign-middle p-2 border-2 rounded hover:font-bold border-grey hover:bg-grey"
-            class="col-span-1 allign-middle p-2 border-2 rounded hover:font-bold border-grey hover:bg-grey"
-            hx-trigger="click"
-            hx-swap="none"
-            hx-post="/register"
-          >
-            Register
-          </button>
+            formaction="/register"
+            formmethod="post"
+          />
         </div>
       </form>
     </div>
