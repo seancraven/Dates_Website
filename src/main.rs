@@ -1,8 +1,5 @@
-use actix_web::{web, web::ServiceConfig};
-use dates::backend::postgres::PgRepo;
-use dates::domain::repository::AppState;
-use dates::routes::dates_service::{add_new_date, dates_service};
-use dates::routes::landing::{create_user, landing, login, search_verification};
+use actix_web::web::ServiceConfig;
+use dates::routes::landing::DatesService;
 use shuttle_actix_web::ShuttleActixWeb;
 use sqlx::PgPool;
 #[shuttle_runtime::main]
@@ -13,18 +10,6 @@ async fn main(
     pool: PgPool,
 ) -> ShuttleActixWeb<impl FnOnce(&mut ServiceConfig) + Send + Clone + 'static> {
     sqlx::migrate!().run(&pool).await.unwrap();
-    let config = move |cfg: &mut ServiceConfig| {
-        cfg.app_data(AppState::new_in_web_data(Box::new(PgRepo { pool })))
-            .service(add_new_date)
-            .service(landing)
-            .service(login)
-            .service(create_user)
-            .service(search_verification)
-            .service(
-                web::scope("/dates")
-                    .wrap(actix_web::middleware::Logger::default())
-                    .configure(dates_service),
-            );
-    };
+    let config = move |cfg: &mut ServiceConfig| DatesService::new(pool).service_configuration(cfg);
     Ok(config.into())
 }

@@ -2,7 +2,7 @@
 mod tests {
     use actix_web::http::StatusCode;
     use actix_web::test;
-    use actix_web::web;
+    use actix_web::web::{self, ServiceConfig};
     use actix_web::{web::Data, App};
     use chrono::{NaiveDate, NaiveTime};
     use dates::auth::user::GroupUser;
@@ -10,8 +10,7 @@ mod tests {
     use dates::backend::postgres::PgRepo;
     use dates::domain::dates::Date;
     use dates::domain::repository::AppState;
-    use dates::routes::dates_service::index;
-    use dates::routes::dates_service::{add_new_date, update_description};
+    use dates::routes::landing::DatesService;
     use sqlx::PgPool;
     use std::collections::HashMap;
     use uuid::Uuid;
@@ -20,11 +19,15 @@ mod tests {
             .with_max_level(tracing::Level::DEBUG)
             .try_init();
     }
-    async fn mock_db() -> web::Data<AppState> {
-        let pool = PgPool::connect("postgres://postgres:assword@localhost:5432/postgres")
+    async fn get_pool() -> PgPool {
+        PgPool::connect("postgres://postgres:assword@localhost:5432/postgres")
             .await
-            .unwrap();
-        let state = AppState::new(Box::new(PgRepo { pool }));
+            .unwrap()
+    }
+    async fn mock_db() -> web::Data<AppState> {
+        let state = AppState::new(Box::new(PgRepo {
+            pool: get_pool().await,
+        }));
         Data::new(state)
     }
 
@@ -70,22 +73,31 @@ mod tests {
     }
     #[actix_web::test]
     async fn test_update_description_success() {
-        start_tracing();
-        let (state, user, date) = mock_db_user_date().await.unwrap();
-        let app = test::init_service(App::new().app_data(state).service(update_description)).await;
+        // start_tracting();
+        let (_, user, date) = mock_db_user_date().await.unwrap();
+
+        let pool = get_pool().await;
+        let app = test::init_service(App::new().configure(move |cfg: &mut ServiceConfig| {
+            DatesService::new(pool).service_configuration(cfg)
+        }))
+        .await;
         let form_data = get_mock_form();
-        let uri = format!("/{}/{}/description", user.id, date.id);
+        let uri = format!("/dates/{}/{}/description", user.id, date.id);
         let req = test::TestRequest::post().uri(&uri).set_form(form_data);
         let resp = test::call_service(&app, req.to_request()).await;
         assert!(resp.status().is_success());
     }
     #[actix_web::test]
     async fn test_update_description_contains_update() {
-        start_tracing();
-        let (state, user, date) = mock_db_user_date().await.unwrap();
-        let app = test::init_service(App::new().app_data(state).service(update_description)).await;
+        // start_tracting();
+        let (_, user, date) = mock_db_user_date().await.unwrap();
+        let pool = get_pool().await;
+        let app = test::init_service(App::new().configure(move |cfg: &mut ServiceConfig| {
+            DatesService::new(pool).service_configuration(cfg)
+        }))
+        .await;
         let form_data = get_mock_form();
-        let uri = format!("/{}/{}/description", user.id, date.id);
+        let uri = format!("/dates/{}/{}/description", user.id, date.id);
         let req = test::TestRequest::post().uri(&uri).set_form(form_data);
         let resp = test::call_and_read_body(&app, req.to_request()).await;
         let text = String::from_utf8(resp.to_vec()).unwrap();
@@ -93,12 +105,16 @@ mod tests {
     }
     #[actix_web::test]
     async fn test_update_description_fails_with_empty_date() {
-        start_tracing();
-        let (state, user, date) = mock_db_user_date().await.unwrap();
-        let app = test::init_service(App::new().app_data(state).service(update_description)).await;
+        // start_tracting();
+        let (_, user, date) = mock_db_user_date().await.unwrap();
+        let pool = get_pool().await;
+        let app = test::init_service(App::new().configure(move |cfg: &mut ServiceConfig| {
+            DatesService::new(pool).service_configuration(cfg)
+        }))
+        .await;
         let mut form_data = get_mock_form();
         form_data.insert("day".to_string(), "".to_string());
-        let uri = format!("/{}/{}/description", user.id, date.id);
+        let uri = format!("/dates/{}/{}/description", user.id, date.id);
         let req = test::TestRequest::post().uri(&uri).set_form(form_data);
         assert!(test::call_service(&app, req.to_request())
             .await
@@ -107,12 +123,16 @@ mod tests {
     }
     #[actix_web::test]
     async fn test_update_description_fails_with_empty_time() {
-        start_tracing();
-        let (state, user, date) = mock_db_user_date().await.unwrap();
-        let app = test::init_service(App::new().app_data(state).service(update_description)).await;
+        // start_tracting();
+        let (_, user, date) = mock_db_user_date().await.unwrap();
+        let pool = get_pool().await;
+        let app = test::init_service(App::new().configure(move |cfg: &mut ServiceConfig| {
+            DatesService::new(pool).service_configuration(cfg)
+        }))
+        .await;
         let mut form_data = get_mock_form();
         form_data.insert("time".to_string(), "".to_string());
-        let uri = format!("/{}/{}/description", user.id, date.id);
+        let uri = format!("/dates/{}/{}/description", user.id, date.id);
         let req = test::TestRequest::post().uri(&uri).set_form(form_data);
         assert!(test::call_service(&app, req.to_request())
             .await
@@ -121,12 +141,16 @@ mod tests {
     }
     #[actix_web::test]
     async fn test_add_date_accept() {
-        start_tracing();
-        let (state, user, _) = mock_db_user_date().await.unwrap();
-        let app = test::init_service(App::new().app_data(state).service(add_new_date)).await;
+        // start_tracting();
+        let (_, user, _) = mock_db_user_date().await.unwrap();
+        let pool = get_pool().await;
+        let app = test::init_service(App::new().configure(move |cfg: &mut ServiceConfig| {
+            DatesService::new(pool).service_configuration(cfg)
+        }))
+        .await;
         let mut form = HashMap::new();
         form.insert("name".to_string(), "Test".to_string());
-        let uri = format!("/{}/new_date", user.id);
+        let uri = format!("/dates/{}/new_date", user.id);
         let req = test::TestRequest::post().uri(&uri).set_form(form);
         assert!(test::call_service(&app, req.to_request())
             .await
@@ -135,10 +159,14 @@ mod tests {
     }
     #[actix_web::test]
     async fn test_add_date_fail() {
-        start_tracing();
-        let state = mock_db().await;
-        let app = test::init_service(App::new().app_data(state).service(add_new_date)).await;
-        let uri = format!("/{}/new_date", Uuid::new_v4());
+        // start_tracting();
+        mock_db_user_date().await.unwrap();
+        let pool = get_pool().await;
+        let app = test::init_service(App::new().configure(move |cfg: &mut ServiceConfig| {
+            DatesService::new(pool).service_configuration(cfg)
+        }))
+        .await;
+        let uri = format!("/dates/{}/new_date", Uuid::new_v4());
         let mut form = HashMap::new();
         form.insert("name".to_string(), "Test".to_string());
         let req = test::TestRequest::post().uri(&uri).set_form(form);
@@ -149,12 +177,16 @@ mod tests {
     }
     #[actix_web::test]
     async fn test_add_date_forbidden() {
-        start_tracing();
-        let (state, user, _) = mock_db_user_date().await.unwrap();
-        let app = test::init_service(App::new().app_data(state).service(add_new_date)).await;
+        // start_tracting();
+        let (_, user, _) = mock_db_user_date().await.unwrap();
+        let pool = get_pool().await;
+        let app = test::init_service(App::new().configure(move |cfg: &mut ServiceConfig| {
+            DatesService::new(pool).service_configuration(cfg)
+        }))
+        .await;
         let mut form = HashMap::new();
         form.insert("name".to_string(), "".to_string());
-        let uri = format!("/{}/new_date", user.id);
+        let uri = format!("/dates/{}/new_date", user.id);
         let req = test::TestRequest::post().uri(&uri).set_form(form);
         assert_eq!(
             test::call_service(&app, req.to_request()).await.status(),
@@ -164,11 +196,52 @@ mod tests {
 
     #[actix_web::test]
     async fn test_index() {
-        start_tracing();
-        let (state, user, _) = mock_db_user_date().await.unwrap();
-        let app = test::init_service(App::new().app_data(state).service(index)).await;
+        // start_tracting();
+        let (_, user, _) = mock_db_user_date().await.unwrap();
+        let pool = get_pool().await;
+        let app = test::init_service(App::new().configure(move |cfg: &mut ServiceConfig| {
+            DatesService::new(pool).service_configuration(cfg)
+        }))
+        .await;
         let req = test::TestRequest::get()
-            .uri(&format!("/{}", user.id))
+            .uri(&format!("/dates/{}", user.id))
+            .to_request();
+        let resp = test::call_service(&app, req).await.status();
+        assert_eq!(resp, StatusCode::OK);
+    }
+    #[actix_web::test]
+    async fn test_login() {
+        // start_tracting();
+        let pool = get_pool().await;
+        let app = test::init_service(App::new().configure(move |cfg: &mut ServiceConfig| {
+            DatesService::new(pool).service_configuration(cfg)
+        }))
+        .await;
+        let mut form = HashMap::new();
+        form.insert("email".to_string(), "test@test.com");
+        form.insert("password".to_string(), "assword");
+        let req = test::TestRequest::post()
+            .uri("/login")
+            .set_form(&form)
+            .to_request();
+        tracing::info!("Sending request.");
+        let resp = test::call_service(&app, req).await.status();
+        assert_eq!(resp, StatusCode::OK);
+    }
+    #[actix_web::test]
+    async fn test_register() {
+        // start_tracting();
+        let pool = get_pool().await;
+        let app = test::init_service(App::new().configure(move |cfg: &mut ServiceConfig| {
+            DatesService::new(pool).service_configuration(cfg)
+        }))
+        .await;
+        let mut form = HashMap::new();
+        form.insert("email".to_string(), "test@test.com");
+        form.insert("password".to_string(), "assword");
+        let req = test::TestRequest::post()
+            .uri("/register")
+            .set_form(&form)
             .to_request();
         let resp = test::call_service(&app, req).await.status();
         assert_eq!(resp, StatusCode::OK);
