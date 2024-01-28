@@ -73,7 +73,6 @@ pub enum AuthorizedUser {
 #[derive(FromRow, Debug, Clone, Deserialize)]
 #[allow(clippy::module_name_repetitions)]
 pub struct UnauthorizedUser {
-    pub username: String,
     pub email: String,
     pub password: Secret<String>,
 }
@@ -82,14 +81,12 @@ pub struct UnauthorizedUser {
 #[allow(clippy::module_name_repetitions)]
 pub struct NoGroupUser {
     pub id: Uuid,
-    pub username: String,
     pub email: String,
 }
 #[derive(Deserialize, Clone, Debug, Serialize)]
 #[allow(clippy::module_name_repetitions)]
 pub struct GroupUser {
     pub id: Uuid,
-    pub username: String,
     pub email: String,
     pub user_group: i32,
 }
@@ -97,7 +94,6 @@ impl NoGroupUser {
     pub fn join_group(self, group: i32) -> GroupUser {
         GroupUser {
             id: Uuid::new_v4(),
-            username: self.username,
             email: self.email,
             user_group: group,
         }

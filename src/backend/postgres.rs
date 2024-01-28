@@ -222,7 +222,6 @@ impl DateRepository for PgRepo {
 #[derive(FromRow, Debug, Clone)]
 pub struct PgUser {
     pub user_id: Uuid,
-    pub username: String,
     pub email: String,
     pub password_hash: Option<String>,
     pub updated_at: DateTime<Utc>,
@@ -234,13 +233,11 @@ impl PgUser {
         match self.user_group {
             Some(g) => AuthorizedUser::GroupUser(GroupUser {
                 id: self.user_id,
-                username: self.username,
                 email: self.email,
                 user_group: g,
             }),
             None => AuthorizedUser::NoGroupUser(NoGroupUser {
                 id: self.user_id,
-                username: self.username,
                 email: self.email,
             }),
         }
@@ -251,9 +248,8 @@ impl UserRepository for PgRepo {
     async fn add_user_to_group(&self, user: NoGroupUser, group: i32) -> anyhow::Result<GroupUser> {
         let a_user = user.join_group(group);
         sqlx::query!(
-            r#"INSERT INTO users (user_id, username, email, user_group) VALUES ($1, $2,$3, $4);"#,
+            r#"INSERT INTO users (user_id, email, user_group) VALUES ($1, $2,$3) ;"#,
             a_user.id,
-            &a_user.username,
             &a_user.email,
             group,
         )
@@ -280,8 +276,7 @@ impl UserRepository for PgRepo {
     ) -> Result<AuthorizedUser, crate::auth::user::UserValidationError> {
         let expectec_user = sqlx::query_as!(
             PgUser,
-            r#"SELECT * FROM users WHERE username=$1 and email=$2;"#,
-            user.username,
+            r#"SELECT * FROM users WHERE  email=$1;"#,
             user.email,
         )
         .fetch_one(&self.pool)
@@ -310,16 +305,17 @@ impl UserRepository for PgRepo {
         let password_hash = compute_password_hash(user.password).await?;
         let new_authorized_user = NoGroupUser {
             id: Uuid::new_v4(),
-            username: user.username,
             email: user.email,
         };
         sqlx::query!(
-            r#"INSERT INTO users (user_id, username, email, password_hash) VALUES ($1, $2, $3, $4);"#,
+            r#"INSERT INTO users (user_id, email, password_hash) VALUES ($1, $2, $3 );"#,
             new_authorized_user.id,
-            new_authorized_user.username,
             new_authorized_user.email,
             password_hash.expose_secret(),
-        ).execute(&self.pool).await.context("Query error")?;
+        )
+        .execute(&self.pool)
+        .await
+        .context("Query error")?;
         Ok(new_authorized_user)
     }
     async fn change_user_password(
@@ -350,7 +346,6 @@ mod test {
         let repo = PgRepo { pool };
         let no_g_use = NoGroupUser {
             id: Uuid::new_v4(),
-            username: String::from("Test"),
             email: String::from("test"),
         };
         let g = repo.create_user_and_group(no_g_use).await?;
