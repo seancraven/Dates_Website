@@ -56,6 +56,10 @@ pub trait UserRepository {
         new_password: Secret<String>,
     ) -> anyhow::Result<AuthorizedUser>;
     async fn remove_user(&self, user_id: &Uuid) -> anyhow::Result<()>;
+    /// Get a user from the repository by id.
+    ///
+    /// * `user_id`: User's id.
+    async fn get_user(&self, user_id: &Uuid) -> anyhow::Result<AuthorizedUser>;
 }
 #[derive(Error, Debug)]
 pub enum UserValidationError {

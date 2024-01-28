@@ -245,10 +245,18 @@ impl PgUser {
 }
 #[async_trait]
 impl UserRepository for PgRepo {
+    async fn get_user(&self, user_id: &Uuid) -> anyhow::Result<AuthorizedUser> {
+        let expected_user =
+            sqlx::query_as!(PgUser, r#"SELECT * FROM users WHERE user_id=$1;"#, user_id)
+                .fetch_one(&self.pool)
+                .await
+                .context("Query failed.")?;
+        Ok(expected_user.into_user())
+    }
     async fn add_user_to_group(&self, user: NoGroupUser, group: i32) -> anyhow::Result<GroupUser> {
         let a_user = user.join_group(group);
         sqlx::query!(
-            r#"INSERT INTO users (user_id, email, user_group) VALUES ($1, $2,$3) ;"#,
+            r#"INSERT INTO users (user_id, email, user_group) VALUES ($1, $2, $3) ;"#,
             a_user.id,
             &a_user.email,
             group,
