@@ -22,7 +22,7 @@
     >
 
     <button
-      hx-post="{{user_id}}/{{date.id}}/description"
+      hx-post="/dates/{{user_id}}/{{date.id}}/description"
       hx-target="#date-{{date.id}}-description, this"
       hx-trigger="click"
       hx-swap="outerHTML"
@@ -31,7 +31,7 @@
       Submit
     </button>
     <button
-      hx-get="{{user_id}}/{{date.id}}/description"
+      hx-get="/dates/{{user_id}}/{{date.id}}/description"
       hx-target="#date-{{date.id}}-description, this"
       hx-trigger="click"
       hx-swap="outerHTML"

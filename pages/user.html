@@ -24,6 +24,17 @@
     >
       <a href="/dates/{{user_id}}">Dates</a>
     </h1>
-    <div>{{user_email}}</div>
+    <div
+      class="w-full font-bold flex items-center justify-center bg-teal-lightest font-sans text-2xl mb-4 container mx-auto grid grid-cols-1"
+    >
+      <div class="col-span-1">{{user_email}}</div>
+      <form class="grid grid-cols-2" action="{{uri}}" method="{{method}}">
+        <input
+          type="submit"
+          value="Create Group"
+          class="col-span-2 allign-middle p-2 border-2 rounded hover:font-bold border-grey hover:bg-grey"
+        />
+      </form>
+    </div>
   </body>
 </html>

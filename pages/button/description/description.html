@@ -6,7 +6,7 @@
   </p>
   <button
     class="text-grey text-center item-right allign-middle col-span-1 p-2 rounded hover:bg-cyan-100 border-2 border-grey"
-    hx-delete="{{user_id}}/{{date.id}}/description"
+    hx-delete="/dates/{{user_id}}/{{date.id}}/description"
     hx-target="#date-{{date.id}}-description"
     hx-trigger="click"
     hx-swap="outerHTML"
