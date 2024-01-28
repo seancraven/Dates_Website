@@ -15,12 +15,13 @@ use chrono::{Local, NaiveDateTime};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs::read;
+use std::sync::Arc;
 use tera::{self, Context, Tera};
 use tracing::{debug, error, info};
 use uuid::Uuid;
 
 pub fn dates_service(cfg: &mut ServiceConfig) {
-    cfg.service(index)
+    cfg.service(date_page)
         .service(add_new_date)
         .service(date_count_increment)
         .service(date_count_decrement)
@@ -32,7 +33,14 @@ pub fn dates_service(cfg: &mut ServiceConfig) {
         .service(update_description);
 }
 #[get("/{user_id}")]
-pub async fn index(app_state: Data<AppState>, user_id: web::Path<Uuid>) -> Result<impl Responder> {
+pub async fn date_page(
+    app_state: Data<AppState>,
+    user_id: web::Path<Uuid>,
+) -> Result<HttpResponse> {
+    date_page_inner(app_state.into_inner(), *user_id).await
+}
+
+pub async fn date_page_inner(app_state: Arc<AppState>, user_id: Uuid) -> Result<HttpResponse> {
     if !app_state.repo.check_user_has_access(&user_id).await {
         info!("Unauthorized user {:?} attempted access", user_id);
         return unauthorized();
@@ -54,7 +62,7 @@ fn template_load(dates: Vec<Date>, cache: &ExpansionCache, user_id: &Uuid) -> Re
         .map_err(ErrorInternalServerError)
 }
 
-#[post("{user_id}/{date_id}/increment")]
+#[post("/{user_id}/{date_id}/increment")]
 async fn date_count_increment(
     ids: web::Path<(Uuid, Uuid)>,
     app_state: Data<AppState>,
@@ -72,7 +80,7 @@ async fn date_count_increment(
         &user_id,
     )?))
 }
-#[post("{user_id}/{date_id}/decrement")]
+#[post("/{user_id}/{date_id}/decrement")]
 async fn date_count_decrement(
     ids: web::Path<(Uuid, Uuid)>,
     app_state: Data<AppState>,
@@ -91,7 +99,7 @@ async fn date_count_decrement(
         &user_id,
     )?))
 }
-#[post("{user_id}/{date_id}/remove")]
+#[post("/{user_id}/{date_id}/remove")]
 async fn date_remove(
     ids: web::Path<(Uuid, Uuid)>,
     app_state: Data<AppState>,
@@ -110,7 +118,7 @@ async fn date_remove(
         &user_id,
     )?))
 }
-#[get("{user_id}/{date_id}")]
+#[get("/{user_id}/{date_id}")]
 async fn date_expand(
     ids: web::Path<(Uuid, Uuid)>,
     app_state: Data<AppState>,
@@ -131,7 +139,7 @@ async fn date_expand(
     app_state.cache.add(date_id, &user_id);
     Ok(HttpResponse::Ok().body(resp))
 }
-#[post("{user_id}/{date_id}")]
+#[post("/{user_id}/{date_id}")]
 async fn date_collapse(
     ids: web::Path<(Uuid, Uuid)>,
     app_state: Data<AppState>,
@@ -156,7 +164,7 @@ async fn date_collapse(
     }
 }
 
-#[post("{user_id}/{date_id}/description")]
+#[post("/{user_id}/{date_id}/description")]
 async fn update_description(
     mut map: web::Form<HashMap<String, String>>,
     ids: web::Path<(Uuid, Uuid)>,
@@ -186,7 +194,7 @@ async fn update_description(
     app_state.repo.update(date.clone(), &user_id).await.unwrap();
     Ok(HttpResponse::Ok().body(render_description(&date, &user_id)?))
 }
-#[delete("{user_id}/{date_id}/description")]
+#[delete("/{user_id}/{date_id}/description")]
 async fn edit_description(
     ids: web::Path<(Uuid, Uuid)>,
     app_state: Data<AppState>,
@@ -198,7 +206,7 @@ async fn edit_description(
         None => Err(ErrorInternalServerError("Date not found")),
     }
 }
-#[get("{user_id}/{date_id}/description")]
+#[get("/{user_id}/{date_id}/description")]
 async fn get_description(
     ids: web::Path<(Uuid, Uuid)>,
     app_state: Data<AppState>,
@@ -214,7 +222,7 @@ async fn get_description(
 struct NewDate {
     name: String,
 }
-#[post("{user_id}/new_date")]
+#[post("/{user_id}/new_date")]
 async fn add_new_date(
     new_date: Form<NewDate>,
     user_id: web::Path<Uuid>,
