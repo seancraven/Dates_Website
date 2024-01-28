@@ -14,6 +14,7 @@ mod tests {
     use sqlx::PgPool;
     use std::collections::HashMap;
     use uuid::Uuid;
+    // TODO: Make tabular. At the moment this is much to long.
     fn start_tracing() {
         let _ = tracing_subscriber::fmt()
             .with_max_level(tracing::Level::DEBUG)
