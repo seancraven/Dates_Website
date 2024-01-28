@@ -1,23 +1,29 @@
 <!doctype html>
 <html lang="en">
-<meta charset="utf-8" />
+  <meta charset="utf-8" />
 
-<head>
-  <script src="https://unpkg.com/htmx.org@1.9.9"
-    integrity="sha384-QFjmbokDn2DjBjq+fM+8LUIVrAgqcNW2s0PjAxHETgRn9l4fvX31ZxDxvwQnyMOX"
-    crossorigin="anonymous"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <title>Date.rs</title>
-  <meta name="google-site-verification" content="iQ5iaJ8KAop21SIlNS__EofP2T-MaPy_PhV2Zjmzytw" />
-</head>
+  <head>
+    <script
+      src="https://unpkg.com/htmx.org@1.9.9"
+      integrity="sha384-QFjmbokDn2DjBjq+fM+8LUIVrAgqcNW2s0PjAxHETgRn9l4fvX31ZxDxvwQnyMOX"
+      crossorigin="anonymous"
+    ></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Date.rs</title>
+    <meta
+      name="google-site-verification"
+      content="iQ5iaJ8KAop21SIlNS__EofP2T-MaPy_PhV2Zjmzytw"
+    />
+  </head>
 
-<body>
-  <h1 id="content" ,
-    class="w-full font-bold flex items-center justify-center bg-teal-lightest font-sans text-2xl mb-4 container mx-auto">
-    <a href="/dates/{{user.id}}">Dates</a>
-  </h1>
-  <div>{{user.username}}</div>
-  <div>{{user.email}}</div>
-</body>
-
+  <body>
+    <h1
+      id="content"
+      ,
+      class="w-full font-bold flex items-center justify-center bg-teal-lightest font-sans text-2xl mb-4 container mx-auto"
+    >
+      <a href="/dates/{{user_id}}">Dates</a>
+    </h1>
+    <div>{{user_email}}</div>
+  </body>
 </html>
