@@ -5,6 +5,7 @@ use sqlx::PgPool;
 // TODO:
 //  - [ ] Make Login Stuff Nicer.
 //  - [ ] Add email backend for Authorization and Inviting.
+//  - [ ] Test
 #[shuttle_runtime::main]
 async fn main(
     #[shuttle_shared_db::Postgres(
