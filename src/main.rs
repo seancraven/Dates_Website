@@ -1,6 +1,6 @@
 use actix_web::web::ServiceConfig;
 use anyhow::Context;
-use dates::routes::landing::MainService;
+use date_rs::routes::landing::MainService;
 use shuttle_actix_web::ShuttleActixWeb;
 use sqlx::{Pool, Postgres};
 // TODO:

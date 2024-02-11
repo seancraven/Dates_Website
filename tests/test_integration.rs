@@ -5,12 +5,12 @@ mod tests {
     use actix_web::web::{self, ServiceConfig};
     use actix_web::{web::Data, App};
     use chrono::{NaiveDate, NaiveTime};
-    use dates::auth::user::GroupUser;
-    use dates::auth::user::NoGroupUser;
-    use dates::backend::postgres::PgRepo;
-    use dates::domain::dates::Date;
-    use dates::domain::repository::AppState;
-    use dates::routes::landing::MainService;
+    use date_rs::auth::user::GroupUser;
+    use date_rs::auth::user::NoGroupUser;
+    use date_rs::backend::postgres::PgRepo;
+    use date_rs::domain::dates::Date;
+    use date_rs::domain::repository::AppState;
+    use date_rs::routes::landing::MainService;
     use sqlx::PgPool;
     use std::collections::HashMap;
     use uuid::Uuid;
