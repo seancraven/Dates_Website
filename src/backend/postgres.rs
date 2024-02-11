@@ -267,10 +267,12 @@ impl UserRepository for PgRepo {
         Ok(a_user)
     }
     async fn create_group(&self) -> anyhow::Result<i32> {
-        sqlx::query_scalar!(r#"INSERT INTO user_groups DEFAULT VALUES RETURNING id;"#)
-            .fetch_one(&self.pool)
-            .await
-            .map_err(|e| anyhow!(e))
+        Ok(
+            sqlx::query_scalar!(r#"INSERT INTO user_groups DEFAULT VALUES RETURNING id;"#)
+                .fetch_one(&self.pool)
+                .await
+                .context("Query error on creating a group")?,
+        )
     }
     async fn get_group_by_email(&self, email: &str) -> anyhow::Result<i32> {
         sqlx::query_scalar!(r#"SELECT (user_group) FROM users WHERE email=$1"#, email)

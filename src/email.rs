@@ -13,10 +13,10 @@ struct EmailClient {
 }
 impl EmailClient {
     /// Send an email that.
-    async fn send_auth_email(&self, user: UnauthorizedUser) -> anyhow::Result<()> {
+    async fn send_auth_email(&self, user: UnauthorizedUser, app_url: &str) -> anyhow::Result<()> {
         self.c
             .post("https://api.postmarkapp.com/email")
-            .json(&PostMarkEmail::new_auth(user)?)
+            .json(&PostMarkEmail::new_auth(user, app_url)?)
             .send()
             .await?;
         Ok(())
@@ -35,9 +35,9 @@ struct PostMarkEmail {
     html: String,
 }
 impl PostMarkEmail {
-    fn new_auth(user: UnauthorizedUser) -> anyhow::Result<PostMarkEmail> {
+    fn new_auth(user: UnauthorizedUser, app_url: &str) -> anyhow::Result<PostMarkEmail> {
         Ok(PostMarkEmail {
-            html: render_email_html(&user.email)?,
+            html: render_email_html(&user.email, app_url)?,
             to: user.email,
             subject: "Date.rs Authentication".into(),
             from: "sean.craven.22@ucl.ac.uk".into(),
@@ -45,13 +45,12 @@ impl PostMarkEmail {
     }
 }
 
-fn render_email_html(email: &str) -> anyhow::Result<String> {
+fn render_email_html(email: &str, app_url: &str) -> anyhow::Result<String> {
     let mut ctx = tera::Context::new();
-    let app_url = std::env::var("url")?;
-    ctx.insert("daters_url", &app_url);
+    ctx.insert("daters_url", app_url);
     ctx.insert(
         "authentication_url",
-        &format!("{}/{}/{}", &app_url, "authenticate", email),
+        &format!("{}/{}/{}", app_url, "authenticate", email),
     );
     tera::Tera::one_off(
         &fs::read_to_string("./pages/welcome_email.html")?,
@@ -61,4 +60,12 @@ fn render_email_html(email: &str) -> anyhow::Result<String> {
     .context("Rendering email template failed.")
 }
 #[cfg(test)]
-mod test {}
+mod test {
+    use super::*;
+    #[test]
+    fn test_html_render() -> anyhow::Result<()> {
+        let response_html = render_email_html("test@email.com", "test.com").unwrap();
+        assert!(response_html.contains("test@email.com"));
+        Ok(())
+    }
+}
