@@ -4,6 +4,7 @@ use std::fs;
 use crate::auth::user::{AuthorizedUser, UnauthorizedUser};
 use crate::backend::postgres::PgRepo;
 use crate::domain::repository::AppState;
+use crate::email::EmailClient;
 use crate::routes::dates_service::render_dates;
 use crate::routes::dates_service::{date_page_inner, dates_service};
 use actix_web::error::{ErrorForbidden, ErrorInternalServerError};
@@ -21,15 +22,17 @@ use uuid::Uuid;
 
 pub struct MainService {
     pool: PgPool,
+    email_client: EmailClient,
 }
 impl MainService {
-    pub fn new(pool: PgPool) -> Self {
-        Self { pool }
+    pub fn new(pool: PgPool, email_client: EmailClient) -> Self {
+        Self { pool, email_client }
     }
     pub fn service_configuration(self, cfg: &mut ServiceConfig) {
-        cfg.app_data(AppState::new_in_web_data(Box::new(PgRepo {
-            pool: self.pool,
-        })))
+        cfg.app_data(AppState::new_in_web_data(
+            Box::new(PgRepo { pool: self.pool }),
+            self.email_client,
+        ))
         .service(
             web::scope("")
                 .wrap(Logger::default())

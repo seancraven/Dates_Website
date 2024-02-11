@@ -1,4 +1,5 @@
 use crate::auth::user::UserRepository;
+use crate::email::EmailClient;
 
 use super::dates::Date;
 use actix_web::web;
@@ -12,16 +13,21 @@ use uuid::Uuid;
 pub struct AppState {
     pub repo: Box<dyn Repository + Send + Sync>,
     pub cache: ExpansionCache,
+    pub email_client: EmailClient,
 }
 impl AppState {
-    pub fn new(repo: Box<dyn Repository + Send + Sync>) -> AppState {
+    pub fn new(repo: Box<dyn Repository + Send + Sync>, email_client: EmailClient) -> AppState {
         AppState {
             repo,
             cache: ExpansionCache::new(),
+            email_client,
         }
     }
-    pub fn new_in_web_data(repo: Box<dyn Repository + Send + Sync>) -> web::Data<AppState> {
-        web::Data::new(AppState::new(repo))
+    pub fn new_in_web_data(
+        repo: Box<dyn Repository + Send + Sync>,
+        email_client: EmailClient,
+    ) -> web::Data<AppState> {
+        web::Data::new(AppState::new(repo, email_client))
     }
 }
 

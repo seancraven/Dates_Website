@@ -13,11 +13,19 @@ async fn main(
         local_uri = "postgres://postgres:assword@localhost:5432/postgres"
     )]
     conn_str: String,
+    #[shuttle_secrets::Secrets] secrets: shuttle_secrets::SecretStore,
 ) -> ShuttleActixWeb<impl FnOnce(&mut ServiceConfig) + Send + Clone + 'static> {
+    let email_client = date_rs::email::EmailClient::new(
+        secrets.get("postmark_api_token").unwrap(),
+        secrets.get("url").unwrap(),
+        secrets.get("from_email").unwrap(),
+    );
     let pool = Pool::<Postgres>::connect(&conn_str)
         .await
         .context("Db connection failed")?;
     sqlx::migrate!().run(&pool).await.unwrap();
-    let config = move |cfg: &mut ServiceConfig| MainService::new(pool).service_configuration(cfg);
+    let config = move |cfg: &mut ServiceConfig| {
+        MainService::new(pool, email_client.clone()).service_configuration(cfg)
+    };
     Ok(config.into())
 }

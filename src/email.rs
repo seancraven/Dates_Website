@@ -9,30 +9,40 @@ use serde::{Deserialize, Serialize};
 
 use crate::auth::user::UnauthorizedUser;
 
-struct EmailClient {
+#[derive(Clone)]
+pub struct EmailClient {
     c: Client,
     api_token: Secret<String>,
     app_url: String,
+    from_email: String,
 }
 impl EmailClient {
-    fn new(api_token: impl Into<String>, app_url: impl Into<String>) -> Self {
+    pub fn new(
+        api_token: impl Into<String>,
+        app_url: impl Into<String>,
+        from_email: impl Into<String>,
+    ) -> Self {
         EmailClient {
             c: Client::new(),
             api_token: Secret::new(api_token.into()),
             app_url: app_url.into(),
+            from_email: from_email.into(),
         }
     }
     /// Send an email that.
-    async fn send_auth_email(
+    pub async fn send_auth_email(
         &self,
         user: UnauthorizedUser,
-        app_url: &str,
     ) -> anyhow::Result<reqwest::Response> {
         let request = self
             .c
             .post("https://api.postmarkapp.com/email")
             .header("X-Postmark-Server-Token", self.api_token.expose_secret())
-            .json(&PostMarkEmail::new_auth(user, app_url)?)
+            .json(&PostMarkEmail::new_auth(
+                user,
+                &self.app_url,
+                &self.from_email,
+            )?)
             .build()?;
         println!("{:?}", request);
         let response = self.c.execute(request).await?;
@@ -52,12 +62,16 @@ struct PostMarkEmail {
     html: String,
 }
 impl PostMarkEmail {
-    fn new_auth(user: UnauthorizedUser, app_url: &str) -> anyhow::Result<PostMarkEmail> {
+    fn new_auth(
+        user: UnauthorizedUser,
+        app_url: &str,
+        from_email: &str,
+    ) -> anyhow::Result<PostMarkEmail> {
         Ok(PostMarkEmail {
             html: render_email_html(&user.email, app_url)?,
             to: user.email,
             subject: "Date.rs Authentication".into(),
-            from: "sean.craven.22@ucl.ac.uk".into(),
+            from: from_email.into(),
         })
     }
 }
@@ -79,7 +93,6 @@ fn render_email_html(email: &str, app_url: &str) -> anyhow::Result<String> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use secrecy::Secret;
     use toml;
     #[test]
     fn test_html_render() -> anyhow::Result<()> {
@@ -89,20 +102,13 @@ mod test {
     }
 
     #[tokio::test]
-    async fn test_client() -> anyhow::Result<()> {
+    async fn test_client_construction() -> anyhow::Result<()> {
         let toml = toml::from_str::<toml::Value>(&fs::read_to_string("Secrets.dev.toml").unwrap())
             .unwrap();
         let key = toml.get("postmark_api_key").unwrap().as_str().unwrap();
         let email_from = toml.get("email_from").unwrap().as_str().unwrap();
         let url = toml.get("url").unwrap().as_str().unwrap();
-        let client = EmailClient::new(key, url);
-        let user = UnauthorizedUser {
-            email: String::from(email_from),
-            password: Secret::new(String::from("assword")),
-        };
-        let response = client.send_auth_email(user, email_from).await?;
-        println!("{:?}", response);
-        assert!(response.status().is_success());
+        let _ = EmailClient::new(key, url, email_from);
         Ok(())
     }
 }

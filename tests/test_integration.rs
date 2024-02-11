@@ -10,6 +10,7 @@ mod tests {
     use date_rs::backend::postgres::PgRepo;
     use date_rs::domain::dates::Date;
     use date_rs::domain::repository::AppState;
+    use date_rs::email::EmailClient;
     use date_rs::routes::landing::MainService;
     use sqlx::PgPool;
     use std::collections::HashMap;
@@ -26,9 +27,12 @@ mod tests {
             .unwrap()
     }
     async fn mock_db() -> web::Data<AppState> {
-        let state = AppState::new(Box::new(PgRepo {
-            pool: get_pool().await,
-        }));
+        let state = AppState::new(
+            Box::new(PgRepo {
+                pool: get_pool().await,
+            }),
+            EmailClient::new("test", "test", "test"),
+        );
         Data::new(state)
     }
 
@@ -79,7 +83,8 @@ mod tests {
 
         let pool = get_pool().await;
         let app = test::init_service(App::new().configure(move |cfg: &mut ServiceConfig| {
-            MainService::new(pool).service_configuration(cfg)
+            MainService::new(pool, EmailClient::new("test", "test", "test"))
+                .service_configuration(cfg)
         }))
         .await;
         let form_data = get_mock_form();
@@ -94,7 +99,8 @@ mod tests {
         let (_, user, date) = mock_db_user_date().await.unwrap();
         let pool = get_pool().await;
         let app = test::init_service(App::new().configure(move |cfg: &mut ServiceConfig| {
-            MainService::new(pool).service_configuration(cfg)
+            MainService::new(pool, EmailClient::new("test", "test", "test"))
+                .service_configuration(cfg)
         }))
         .await;
         let form_data = get_mock_form();
@@ -110,7 +116,8 @@ mod tests {
         let (_, user, date) = mock_db_user_date().await.unwrap();
         let pool = get_pool().await;
         let app = test::init_service(App::new().configure(move |cfg: &mut ServiceConfig| {
-            MainService::new(pool).service_configuration(cfg)
+            MainService::new(pool, EmailClient::new("test", "test", "test"))
+                .service_configuration(cfg)
         }))
         .await;
         let mut form_data = get_mock_form();
@@ -128,7 +135,8 @@ mod tests {
         let (_, user, date) = mock_db_user_date().await.unwrap();
         let pool = get_pool().await;
         let app = test::init_service(App::new().configure(move |cfg: &mut ServiceConfig| {
-            MainService::new(pool).service_configuration(cfg)
+            MainService::new(pool, EmailClient::new("test", "test", "test"))
+                .service_configuration(cfg)
         }))
         .await;
         let mut form_data = get_mock_form();
@@ -146,7 +154,8 @@ mod tests {
         let (_, user, _) = mock_db_user_date().await.unwrap();
         let pool = get_pool().await;
         let app = test::init_service(App::new().configure(move |cfg: &mut ServiceConfig| {
-            MainService::new(pool).service_configuration(cfg)
+            MainService::new(pool, EmailClient::new("test", "test", "test"))
+                .service_configuration(cfg)
         }))
         .await;
         let mut form = HashMap::new();
@@ -164,7 +173,8 @@ mod tests {
         mock_db_user_date().await.unwrap();
         let pool = get_pool().await;
         let app = test::init_service(App::new().configure(move |cfg: &mut ServiceConfig| {
-            MainService::new(pool).service_configuration(cfg)
+            MainService::new(pool, EmailClient::new("test", "test", "test"))
+                .service_configuration(cfg)
         }))
         .await;
         let uri = format!("/dates/{}/new_date", Uuid::new_v4());
@@ -182,7 +192,8 @@ mod tests {
         let (_, user, _) = mock_db_user_date().await.unwrap();
         let pool = get_pool().await;
         let app = test::init_service(App::new().configure(move |cfg: &mut ServiceConfig| {
-            MainService::new(pool).service_configuration(cfg)
+            MainService::new(pool, EmailClient::new("test", "test", "test"))
+                .service_configuration(cfg)
         }))
         .await;
         let mut form = HashMap::new();
@@ -201,7 +212,8 @@ mod tests {
         let (_, user, _) = mock_db_user_date().await.unwrap();
         let pool = get_pool().await;
         let app = test::init_service(App::new().configure(move |cfg: &mut ServiceConfig| {
-            MainService::new(pool).service_configuration(cfg)
+            MainService::new(pool, EmailClient::new("test", "test", "test"))
+                .service_configuration(cfg)
         }))
         .await;
         let req = test::TestRequest::get()
@@ -215,7 +227,8 @@ mod tests {
         // start_tracting();
         let pool = get_pool().await;
         let app = test::init_service(App::new().configure(move |cfg: &mut ServiceConfig| {
-            MainService::new(pool).service_configuration(cfg)
+            MainService::new(pool, EmailClient::new("test", "test", "test"))
+                .service_configuration(cfg)
         }))
         .await;
         let mut form = HashMap::new();
@@ -234,7 +247,8 @@ mod tests {
         // start_tracting();
         let pool = get_pool().await;
         let app = test::init_service(App::new().configure(move |cfg: &mut ServiceConfig| {
-            MainService::new(pool).service_configuration(cfg)
+            MainService::new(pool, EmailClient::new("test", "test", "test"))
+                .service_configuration(cfg)
         }))
         .await;
         let mut form = HashMap::new();
