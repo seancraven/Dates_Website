@@ -5,22 +5,18 @@ mod tests {
     use actix_web::web::{self, ServiceConfig};
     use actix_web::{web::Data, App};
     use chrono::{NaiveDate, NaiveTime};
-    use date_rs::auth::user::GroupUser;
-    use date_rs::auth::user::NoGroupUser;
+    use date_rs::auth::user::AuthorizedUser;
+    use date_rs::auth::user::{GroupUser, UnRegisteredUser};
     use date_rs::backend::postgres::PgRepo;
     use date_rs::domain::dates::Date;
     use date_rs::domain::repository::AppState;
     use date_rs::email::EmailClient;
     use date_rs::routes::landing::MainService;
+    use secrecy::Secret;
     use sqlx::PgPool;
     use std::collections::HashMap;
     use uuid::Uuid;
     // TODO: Make tabular. At the moment this is much to long.
-    fn start_tracing() {
-        let _ = tracing_subscriber::fmt()
-            .with_max_level(tracing::Level::DEBUG)
-            .try_init();
-    }
     async fn get_pool() -> PgPool {
         PgPool::connect("postgres://postgres:assword@localhost:5432/postgres")
             .await
@@ -37,11 +33,13 @@ mod tests {
     }
 
     async fn mock_user(state: &AppState) -> anyhow::Result<GroupUser> {
-        let mock_user = NoGroupUser {
-            id: Uuid::new_v4(),
-            email: String::from("integration@test.com"),
+        let mock_user = UnRegisteredUser::new("integration@test.com", "assword");
+        let id = state.repo.register_user(mock_user).await?;
+        state.repo.activate_user(&id).await?;
+        let AuthorizedUser::NoGroupUser(mock_user) = state.repo.get_user(&id).await? else {
+            return Err(anyhow::anyhow!("User wasn't found."));
         };
-        state.repo.create_user_and_group(mock_user).await
+        state.repo.add_user_to_new_group(mock_user).await
     }
     async fn mock_date(state: &AppState, user: &GroupUser) -> anyhow::Result<Date> {
         let mock_date = Date::new("test date");
@@ -224,15 +222,15 @@ mod tests {
     }
     #[actix_web::test]
     async fn test_login() {
-        // start_tracting();
         let pool = get_pool().await;
+        mock_db_user_date().await.unwrap();
         let app = test::init_service(App::new().configure(move |cfg: &mut ServiceConfig| {
             MainService::new(pool, EmailClient::new("test", "test", "test"))
                 .service_configuration(cfg)
         }))
         .await;
         let mut form = HashMap::new();
-        form.insert("email".to_string(), "test@test.com");
+        form.insert("email".to_string(), "integration@test.com");
         form.insert("password".to_string(), "assword");
         let req = test::TestRequest::post()
             .uri("/login")
@@ -241,6 +239,44 @@ mod tests {
         tracing::info!("Sending request.");
         let resp = test::call_service(&app, req).await.status();
         assert_eq!(resp, StatusCode::OK);
+    }
+    #[actix_web::test]
+    async fn test_login_bad_password() {
+        let pool = get_pool().await;
+        let app = test::init_service(App::new().configure(move |cfg: &mut ServiceConfig| {
+            MainService::new(pool, EmailClient::new("test", "test", "test"))
+                .service_configuration(cfg)
+        }))
+        .await;
+        let mut form = HashMap::new();
+        form.insert("email".to_string(), "integration@test.com");
+        form.insert("password".to_string(), "failword");
+        let req = test::TestRequest::post()
+            .uri("/login")
+            .set_form(&form)
+            .to_request();
+        tracing::info!("Sending request.");
+        let resp = test::call_service(&app, req).await.status();
+        assert_eq!(resp, StatusCode::UNAUTHORIZED);
+    }
+    #[actix_web::test]
+    async fn test_login_bad_email() {
+        let pool = get_pool().await;
+        let app = test::init_service(App::new().configure(move |cfg: &mut ServiceConfig| {
+            MainService::new(pool, EmailClient::new("test", "test", "test"))
+                .service_configuration(cfg)
+        }))
+        .await;
+        let mut form = HashMap::new();
+        form.insert("email".to_string(), "doesnt@exist.com");
+        form.insert("password".to_string(), "failword");
+        let req = test::TestRequest::post()
+            .uri("/login")
+            .set_form(&form)
+            .to_request();
+        tracing::info!("Sending request.");
+        let resp = test::call_service(&app, req).await.status();
+        assert_eq!(resp, StatusCode::NOT_FOUND);
     }
     #[actix_web::test]
     async fn test_register() {
