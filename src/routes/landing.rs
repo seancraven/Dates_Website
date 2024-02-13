@@ -17,7 +17,7 @@ use actix_web::{
     web::{self, Data, Path, ServiceConfig},
     HttpResponse, Responder,
 };
-use secrecy::Secret;
+
 use sqlx::PgPool;
 use tera::{Context, Tera};
 use uuid::Uuid;

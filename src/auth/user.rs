@@ -13,7 +13,7 @@
 use secrecy::Secret;
 use serde::{Deserialize, Serialize};
 use shuttle_runtime::async_trait;
-use sqlx::FromRow;
+
 use thiserror::Error;
 use uuid::Uuid;
 
