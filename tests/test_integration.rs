@@ -12,11 +12,12 @@ mod tests {
     use date_rs::domain::repository::AppState;
     use date_rs::email::EmailClient;
     use date_rs::routes::landing::MainService;
-    use secrecy::Secret;
     use sqlx::PgPool;
     use std::collections::HashMap;
     use uuid::Uuid;
     // TODO: Make tabular. At the moment this is much to long.
+    //
+    //
     async fn get_pool() -> PgPool {
         PgPool::connect("postgres://postgres:assword@localhost:5432/postgres")
             .await
@@ -44,10 +45,10 @@ mod tests {
     async fn mock_date(state: &AppState, user: &GroupUser) -> anyhow::Result<Date> {
         let mock_date = Date::new("test date");
 
-        state.repo.add(mock_date.clone(), user.id).await?;
+        state.repo.add(mock_date.clone(), user.user_id).await?;
         state
             .repo
-            .get(&mock_date.id, &user.id)
+            .get(&mock_date.id, &user.user_id)
             .await
             .ok_or(anyhow::anyhow!("Date wans't found"))
     }
@@ -86,7 +87,7 @@ mod tests {
         }))
         .await;
         let form_data = get_mock_form();
-        let uri = format!("/dates/{}/{}/description", user.id, date.id);
+        let uri = format!("/dates/{}/{}/description", user.user_id, date.id);
         let req = test::TestRequest::post().uri(&uri).set_form(form_data);
         let resp = test::call_service(&app, req.to_request()).await;
         assert!(resp.status().is_success());
@@ -102,7 +103,7 @@ mod tests {
         }))
         .await;
         let form_data = get_mock_form();
-        let uri = format!("/dates/{}/{}/description", user.id, date.id);
+        let uri = format!("/dates/{}/{}/description", user.user_id, date.id);
         let req = test::TestRequest::post().uri(&uri).set_form(form_data);
         let resp = test::call_and_read_body(&app, req.to_request()).await;
         let text = String::from_utf8(resp.to_vec()).unwrap();
@@ -120,7 +121,7 @@ mod tests {
         .await;
         let mut form_data = get_mock_form();
         form_data.insert("day".to_string(), "".to_string());
-        let uri = format!("/dates/{}/{}/description", user.id, date.id);
+        let uri = format!("/dates/{}/{}/description", user.user_id, date.id);
         let req = test::TestRequest::post().uri(&uri).set_form(form_data);
         assert!(test::call_service(&app, req.to_request())
             .await
@@ -139,7 +140,7 @@ mod tests {
         .await;
         let mut form_data = get_mock_form();
         form_data.insert("time".to_string(), "".to_string());
-        let uri = format!("/dates/{}/{}/description", user.id, date.id);
+        let uri = format!("/dates/{}/{}/description", user.user_id, date.id);
         let req = test::TestRequest::post().uri(&uri).set_form(form_data);
         assert!(test::call_service(&app, req.to_request())
             .await
@@ -158,7 +159,7 @@ mod tests {
         .await;
         let mut form = HashMap::new();
         form.insert("name".to_string(), "Test".to_string());
-        let uri = format!("/dates/{}/new_date", user.id);
+        let uri = format!("/dates/{}/new_date", user.user_id);
         let req = test::TestRequest::post().uri(&uri).set_form(form);
         assert!(test::call_service(&app, req.to_request())
             .await
@@ -196,7 +197,7 @@ mod tests {
         .await;
         let mut form = HashMap::new();
         form.insert("name".to_string(), "".to_string());
-        let uri = format!("/dates/{}/new_date", user.id);
+        let uri = format!("/dates/{}/new_date", user.user_id);
         let req = test::TestRequest::post().uri(&uri).set_form(form);
         assert_eq!(
             test::call_service(&app, req.to_request()).await.status(),
@@ -215,7 +216,7 @@ mod tests {
         }))
         .await;
         let req = test::TestRequest::get()
-            .uri(&format!("/dates/{}", user.id))
+            .uri(&format!("/dates/{}", user.user_id))
             .to_request();
         let resp = test::call_service(&app, req).await.status();
         assert_eq!(resp, StatusCode::OK);
