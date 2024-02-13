@@ -261,7 +261,7 @@ impl UserRepository for PgRepo {
         let a_user = user.join_group(group);
         sqlx::query!(
             r#"UPDATE users SET user_group=$3 WHERE user_id=$1 and email=$2;"#,
-            a_user.id,
+            a_user.user_id,
             &a_user.email,
             group,
         )
@@ -336,10 +336,18 @@ impl UserRepository for PgRepo {
     }
     async fn change_user_password(
         &self,
-        user: AuthorizedUser,
+        user_id: &Uuid,
         new_password: secrecy::Secret<String>,
-    ) -> anyhow::Result<AuthorizedUser> {
-        todo!();
+    ) -> anyhow::Result<()> {
+        let password_hash = compute_password_hash(new_password).await?;
+        sqlx::query!(
+            r#"UPDATE users SET password_hash=$2 WHERE user_id=$1;"#,
+            user_id,
+            password_hash.expose_secret(),
+        )
+        .execute(&self.pool)
+        .await?;
+        Ok(())
     }
     async fn activate_user(&self, user_id: &Uuid) -> Result<NoGroupUser, UserValidationError> {
         let record = sqlx::query!(
@@ -380,13 +388,50 @@ mod test {
     }
 
     #[tokio::test]
+    async fn test_validate_user() -> anyhow::Result<()> {
+        let repo = setup_repo().await;
+        let email = "test@password.com";
+        let password = "assword";
+        let test_user = UnRegisteredUser::new(email, password);
+        let un_auth = UnAuthorizedUser::new(email, password);
+        let id = repo.register_user(test_user.clone()).await?;
+        repo.activate_user(&id).await?;
+        repo.validate_user(&un_auth).await?;
+        Ok(())
+    }
+    #[tokio::test]
     async fn test_repo() -> anyhow::Result<()> {
         let repo = setup_repo().await;
         let test_user = UnRegisteredUser::new("test@unit.com", "assword");
         let id = repo.register_user(test_user.clone()).await?;
         let no_g_use = repo.activate_user(&id).await?;
         let g = repo.add_user_to_new_group(no_g_use).await?;
-        repo.add(Date::new("Test"), g.id).await?;
+        repo.add(Date::new("Test"), g.user_id).await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_password_change() -> anyhow::Result<()> {
+        let repo = setup_repo().await;
+        let email = "password@unit.com";
+        let pword = "assword";
+        let password_new = "updated_password";
+        let test_user = UnRegisteredUser::new(email, pword);
+        let re_login = UnAuthorizedUser::new(email, pword);
+        let id = repo.register_user(test_user).await?;
+        repo.activate_user(&id)
+            .await
+            .expect("User activation failed.");
+        repo.validate_user(&re_login)
+            .await
+            .expect("User validation failed.");
+        repo.change_user_password(&id, Secret::new(password_new.into()))
+            .await
+            .expect("Password change failed.");
+        let new_u = UnAuthorizedUser::new(email, password_new);
+        repo.validate_user(&new_u)
+            .await
+            .expect("User validation failed.");
         Ok(())
     }
 }

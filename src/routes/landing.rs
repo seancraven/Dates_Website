@@ -80,9 +80,9 @@ async fn login(
 
     match user {
         AuthorizedUser::GroupUser(u) => {
-            let dates = app_state.repo.get_all(&u.id).await;
-            let dates =
-                render_dates(dates, &app_state.cache, &u.id).map_err(ErrorInternalServerError)?;
+            let dates = app_state.repo.get_all(&u.user_id).await;
+            let dates = render_dates(dates, &app_state.cache, &u.user_id)
+                .map_err(ErrorInternalServerError)?;
             Ok(HttpResponse::Ok().body(dates))
         }
         AuthorizedUser::NoGroupUser(_) => {
@@ -116,9 +116,9 @@ async fn authorize(app_state: Data<AppState>, user_id: Path<Uuid>) -> Result<Htt
         .await
         .map_err(ErrorInternalServerError)?;
     let mut ctx = Context::new();
-    ctx.insert("user_id", &user.id);
+    ctx.insert("user_id", &user.user_id);
     ctx.insert("user_email", &user.email);
-    ctx.insert("uri", &format!("{:?}/create_group", &user.id));
+    ctx.insert("uri", &format!("{:?}/create_group", &user.user_id));
     ctx.insert("method", "post");
     let body = Tera::one_off(&fs::read_to_string("./pages/user.html")?, &ctx, false)
         .map_err(ErrorInternalServerError)?;
@@ -144,7 +144,7 @@ async fn create_group(app_state: Data<AppState>, user_id: Path<Uuid>) -> Result<
         .add_user_to_group(user, group)
         .await
         .map_err(ErrorInternalServerError)?;
-    date_page_inner(app_state.into_inner(), group_user.id).await
+    date_page_inner(app_state.into_inner(), group_user.user_id).await
 }
 
 #[get("googleb0081feae6701197.html")]

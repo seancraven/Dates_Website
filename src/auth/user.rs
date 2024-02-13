@@ -68,9 +68,9 @@ pub trait UserRepository {
     /// Update an existing authorized users's password.
     async fn change_user_password(
         &self,
-        user: AuthorizedUser,
+        user_id: &Uuid,
         new_password: Secret<String>,
-    ) -> anyhow::Result<AuthorizedUser>;
+    ) -> anyhow::Result<()>;
     async fn remove_user(&self, user_id: &Uuid) -> anyhow::Result<()>;
     /// Get a user from the repository by id.
     ///
@@ -127,24 +127,32 @@ pub enum AuthorizedUser {
     NoGroupUser(NoGroupUser),
     GroupUser(GroupUser),
 }
+impl AuthorizedUser {
+    pub fn id(&self) -> Uuid {
+        match &self {
+            Self::NoGroupUser(u) => u.user_id,
+            Self::GroupUser(u) => u.user_id,
+        }
+    }
+}
 
 #[derive(Debug, Clone, Deserialize)]
 #[allow(clippy::module_name_repetitions)]
 pub struct NoGroupUser {
-    pub id: Uuid,
+    pub user_id: Uuid,
     pub email: String,
 }
 impl NoGroupUser {
     pub fn join_group(self, group: i32) -> GroupUser {
         GroupUser {
-            id: self.id,
+            user_id: self.user_id,
             email: self.email,
             user_group: group,
         }
     }
-    pub fn new(id: Uuid, email: impl Into<String>) -> Self {
+    pub fn new(user_id: Uuid, email: impl Into<String>) -> Self {
         NoGroupUser {
-            id,
+            user_id,
             email: email.into(),
         }
     }
@@ -152,14 +160,14 @@ impl NoGroupUser {
 #[derive(Deserialize, Clone, Debug, Serialize)]
 #[allow(clippy::module_name_repetitions)]
 pub struct GroupUser {
-    pub id: Uuid,
+    pub user_id: Uuid,
     pub email: String,
     pub user_group: i32,
 }
 impl GroupUser {
-    pub fn new(id: Uuid, email: impl Into<String>, user_group: i32) -> Self {
+    pub fn new(user_id: Uuid, email: impl Into<String>, user_group: i32) -> Self {
         GroupUser {
-            id,
+            user_id,
             email: email.into(),
             user_group,
         }
