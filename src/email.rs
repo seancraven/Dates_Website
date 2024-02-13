@@ -7,8 +7,6 @@ use reqwest::Client;
 use secrecy::{ExposeSecret, Secret};
 use serde::{Deserialize, Serialize};
 
-use crate::auth::user::UnauthorizedUser;
-
 #[derive(Clone)]
 pub struct EmailClient {
     c: Client,
@@ -30,16 +28,13 @@ impl EmailClient {
         }
     }
     /// Send an email that.
-    pub async fn send_auth_email(
-        &self,
-        user: UnauthorizedUser,
-    ) -> anyhow::Result<reqwest::Response> {
+    pub async fn send_auth_email(&self, user_email: &str) -> anyhow::Result<reqwest::Response> {
         let request = self
             .c
             .post("https://api.postmarkapp.com/email")
             .header("X-Postmark-Server-Token", self.api_token.expose_secret())
             .json(&PostMarkEmail::new_auth(
-                user,
+                user_email,
                 &self.app_url,
                 &self.from_email,
             )?)
@@ -63,13 +58,13 @@ struct PostMarkEmail {
 }
 impl PostMarkEmail {
     fn new_auth(
-        user: UnauthorizedUser,
+        user_email: &str,
         app_url: &str,
         from_email: &str,
     ) -> anyhow::Result<PostMarkEmail> {
         Ok(PostMarkEmail {
-            html: render_email_html(&user.email, app_url)?,
-            to: user.email,
+            html: render_email_html(&user_email, app_url)?,
+            to: String::from(user_email),
             subject: "Date.rs Authentication".into(),
             from: from_email.into(),
         })

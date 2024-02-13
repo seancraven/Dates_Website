@@ -1,13 +1,15 @@
 use std::collections::HashMap;
 use std::fs;
 
-use crate::auth::user::{AuthorizedUser, UnauthorizedUser};
+use crate::auth::user::{AuthorizedUser, UnAuthorizedUser, UnRegisteredUser, UserValidationError};
 use crate::backend::postgres::PgRepo;
 use crate::domain::repository::AppState;
 use crate::email::EmailClient;
 use crate::routes::dates_service::render_dates;
 use crate::routes::dates_service::{date_page_inner, dates_service};
-use actix_web::error::{ErrorForbidden, ErrorInternalServerError};
+use actix_web::error::{
+    ErrorForbidden, ErrorInternalServerError, ErrorNotFound, ErrorUnauthorized,
+};
 use actix_web::middleware::Logger;
 use actix_web::Result;
 use actix_web::{
@@ -61,14 +63,20 @@ pub async fn landing() -> Result<impl Responder> {
 async fn login(
     app_state: Data<AppState>,
     mut form: web::Form<HashMap<String, String>>,
-) -> Result<impl Responder> {
-    let u_user = UnauthorizedUser {
-        email: form.remove("email").unwrap(),
-        password: Secret::new(form.remove("password").unwrap()),
-    };
-    let Ok(user) = app_state.repo.validate_user(&u_user).await else {
-        return Ok(HttpResponse::Unauthorized().body("Not a valid user."));
-    };
+) -> Result<HttpResponse> {
+    let u_user = UnAuthorizedUser::new(
+        form.remove("email").unwrap(),
+        form.remove("password").unwrap(),
+    );
+    let user = app_state
+        .repo
+        .validate_user(&u_user)
+        .await
+        .map_err(|e| match e {
+            UserValidationError::PasswordError(_) => ErrorUnauthorized("User Password failed."),
+            UserValidationError::RegistrationError(e) => ErrorNotFound(e),
+            _ => ErrorInternalServerError("Server Error."),
+        })?;
 
     match user {
         AuthorizedUser::GroupUser(u) => {
@@ -88,13 +96,23 @@ async fn register(
     app_state: Data<AppState>,
     mut form: web::Form<HashMap<String, String>>,
 ) -> Result<HttpResponse> {
-    let u_user = UnauthorizedUser {
-        email: form.remove("email").unwrap(),
-        password: Secret::new(form.remove("password").unwrap()),
-    };
+    let u_user = UnRegisteredUser::new(
+        form.remove("email").unwrap(),
+        form.remove("password").unwrap(),
+    );
+    app_state
+        .repo
+        .register_user(u_user)
+        .await
+        .map_err(ErrorInternalServerError)?;
+    Ok(HttpResponse::Ok().body("Check your email for a link to activate your account."))
+}
+
+#[post("/authorize/{user_id}")]
+async fn authorize(app_state: Data<AppState>, user_id: Path<Uuid>) -> Result<HttpResponse> {
     let user = app_state
         .repo
-        .create_authorized_user(u_user)
+        .activate_user(&user_id)
         .await
         .map_err(ErrorInternalServerError)?;
     let mut ctx = Context::new();

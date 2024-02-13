@@ -1,7 +1,6 @@
 use anyhow::{anyhow, Context};
 use argon2::PasswordHash;
 use chrono::Local;
-use log::error;
 use secrecy::{ExposeSecret, Secret};
 use shuttle_runtime::async_trait;
 use sqlx::{
@@ -9,20 +8,20 @@ use sqlx::{
     types::Uuid,
     FromRow, PgPool,
 };
+use tracing::error;
 
 use crate::{
-    auth::user::{GroupUser, UserValidationError},
-    domain::repository::InsertDateError,
+    auth::user::UnAuthorizedUser,
+    domain::repository::{DateRepository, InsertDateError, Repository},
 };
-use crate::{
-    auth::user::{NoGroupUser, UserRepository},
-    domain::repository::DateRepository,
-};
-use crate::{auth::verify_password_hash, domain::repository::Repository};
 use crate::{
     auth::{
         compute_password_hash,
-        user::{AuthorizedUser, UnauthorizedUser},
+        user::{
+            AuthorizedUser, GroupUser, NoGroupUser, UnRegisteredUser, UserRepository,
+            UserValidationError,
+        },
+        verify_password_hash,
     },
     domain::dates::{Date, Description, Status},
 };
@@ -227,36 +226,41 @@ pub struct PgUser {
     pub updated_at: DateTime<Utc>,
     pub created_at: DateTime<Utc>,
     pub user_group: Option<i32>,
+    pub auth: bool,
 }
-impl PgUser {
-    fn into_user(self) -> AuthorizedUser {
-        match self.user_group {
-            Some(g) => AuthorizedUser::GroupUser(GroupUser {
-                id: self.user_id,
-                email: self.email,
-                user_group: g,
-            }),
-            None => AuthorizedUser::NoGroupUser(NoGroupUser {
-                id: self.user_id,
-                email: self.email,
-            }),
+impl TryInto<AuthorizedUser> for PgUser {
+    type Error = UserValidationError;
+    fn try_into(self) -> Result<AuthorizedUser, Self::Error> {
+        if !self.auth {
+            return Err(UserValidationError::RegistrationError(anyhow!(
+                "User isn't registerd."
+            )));
         }
+        Ok(match self.user_group {
+            Some(g) => AuthorizedUser::GroupUser(GroupUser::new(self.user_id, self.email, g)),
+            None => AuthorizedUser::NoGroupUser(NoGroupUser::new(self.user_id, self.email)),
+        })
     }
 }
 #[async_trait]
 impl UserRepository for PgRepo {
-    async fn get_user(&self, user_id: &Uuid) -> anyhow::Result<AuthorizedUser> {
+    async fn get_user(&self, user_id: &Uuid) -> Result<AuthorizedUser, UserValidationError> {
         let expected_user =
             sqlx::query_as!(PgUser, r#"SELECT * FROM users WHERE user_id=$1;"#, user_id)
                 .fetch_one(&self.pool)
                 .await
-                .context("Query failed.")?;
-        Ok(expected_user.into_user())
+                .map_err(|_| {
+                    UserValidationError::RegistrationError(anyhow!(
+                        "No user found with id: {:?}",
+                        user_id
+                    ))
+                })?;
+        Ok(expected_user.try_into()?)
     }
     async fn add_user_to_group(&self, user: NoGroupUser, group: i32) -> anyhow::Result<GroupUser> {
         let a_user = user.join_group(group);
         sqlx::query!(
-            r#"INSERT INTO users (user_id, email, user_group) VALUES ($1, $2, $3) ;"#,
+            r#"UPDATE users SET user_group=$3 WHERE user_id=$1 and email=$2;"#,
             a_user.id,
             &a_user.email,
             group,
@@ -282,18 +286,20 @@ impl UserRepository for PgRepo {
     }
     async fn validate_user(
         &self,
-        user: &UnauthorizedUser,
+        user: &UnAuthorizedUser,
     ) -> Result<AuthorizedUser, crate::auth::user::UserValidationError> {
-        let expectec_user = sqlx::query_as!(
+        let expected_user = sqlx::query_as!(
             PgUser,
             r#"SELECT * FROM users WHERE  email=$1;"#,
             user.email,
         )
         .fetch_one(&self.pool)
         .await
-        .context("Query failed.")?;
+        .map_err(|_| {
+            UserValidationError::RegistrationError(anyhow!("User :{} doesn't exist.", user.email))
+        })?;
         let password_hash = PasswordHash::new(
-            expectec_user
+            expected_user
                 .password_hash
                 .as_ref()
                 .ok_or(UserValidationError::PasswordError(anyhow!("No Password.")))?,
@@ -305,28 +311,28 @@ impl UserRepository for PgRepo {
         )
         .await
         .map_err(|e| UserValidationError::PasswordError(e.into()))?;
-        Ok(expectec_user.into_user())
+        Ok(expected_user.try_into()?)
     }
 
     async fn remove_user(&self, user_id: &Uuid) -> anyhow::Result<()> {
-        todo!();
+        sqlx::query!(r#"DELETE FROM users WHERE user_id=$1"#, user_id)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
     }
-    async fn create_authorized_user(&self, user: UnauthorizedUser) -> anyhow::Result<NoGroupUser> {
+    async fn register_user(&self, user: UnRegisteredUser) -> Result<Uuid, UserValidationError> {
+        let new_id = Uuid::new_v4();
         let password_hash = compute_password_hash(user.password).await?;
-        let new_authorized_user = NoGroupUser {
-            id: Uuid::new_v4(),
-            email: user.email,
-        };
         sqlx::query!(
             r#"INSERT INTO users (user_id, email, password_hash) VALUES ($1, $2, $3 );"#,
-            new_authorized_user.id,
-            new_authorized_user.email,
+            new_id,
+            user.email,
             password_hash.expose_secret(),
         )
         .execute(&self.pool)
         .await
         .context("Query error")?;
-        Ok(new_authorized_user)
+        Ok(new_id)
     }
     async fn change_user_password(
         &self,
@@ -335,30 +341,51 @@ impl UserRepository for PgRepo {
     ) -> anyhow::Result<AuthorizedUser> {
         todo!();
     }
+    async fn activate_user(&self, user_id: &Uuid) -> Result<NoGroupUser, UserValidationError> {
+        let record = sqlx::query!(
+            r#"UPDATE users SET auth=true WHERE user_id = $1 RETURNING user_id, email;"#,
+            user_id,
+        )
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|_| UserValidationError::RegistrationError(anyhow!("User doesn't exist")))?;
+        Ok(NoGroupUser::new(record.user_id, record.email))
+    }
 }
 #[cfg(test)]
 mod test {
     use super::*;
     use sqlx::PgPool;
-    use tracing;
-    fn tracing_once() {
-        let _ = tracing_subscriber::fmt()
-            .with_max_level(tracing::Level::DEBUG)
-            .try_init();
+    async fn setup_repo() -> PgRepo {
+        let pool = PgPool::connect("postgres://postgres:assword@localhost:5432/postgres")
+            .await
+            .unwrap();
+        PgRepo { pool }
+    }
+    #[tokio::test]
+    async fn test_create_user_flow() -> anyhow::Result<()> {
+        let repo = setup_repo().await;
+        let test_user = UnRegisteredUser::new("test@unit.com", "assword");
+        repo.register_user(test_user).await?;
+        Ok(())
+    }
+    #[tokio::test]
+    async fn test_authorize_user() -> anyhow::Result<()> {
+        let repo = setup_repo().await;
+        let test_user = UnRegisteredUser::new("test@unit.com", "assword");
+        let id = repo.register_user(test_user.clone()).await?;
+        let new_u = repo.activate_user(&id).await?;
+        assert_eq!(new_u.email, test_user.email);
+        Ok(())
     }
 
     #[tokio::test]
     async fn test_repo() -> anyhow::Result<()> {
-        tracing_once();
-        let pool = PgPool::connect("postgres://postgres:assword@localhost:5432/postgres")
-            .await
-            .unwrap();
-        let repo = PgRepo { pool };
-        let no_g_use = NoGroupUser {
-            id: Uuid::new_v4(),
-            email: String::from("test"),
-        };
-        let g = repo.create_user_and_group(no_g_use).await?;
+        let repo = setup_repo().await;
+        let test_user = UnRegisteredUser::new("test@unit.com", "assword");
+        let id = repo.register_user(test_user.clone()).await?;
+        let no_g_use = repo.activate_user(&id).await?;
+        let g = repo.add_user_to_new_group(no_g_use).await?;
         repo.add(Date::new("Test"), g.id).await?;
         Ok(())
     }
