@@ -35,12 +35,17 @@ mod tests {
 
     async fn mock_user(state: &AppState) -> anyhow::Result<GroupUser> {
         let mock_user = UnRegisteredUser::new("integration@test.com", "assword");
-        let id = state.repo.register_user(mock_user).await?;
-        state.repo.activate_user(&id).await?;
-        let AuthorizedUser::NoGroupUser(mock_user) = state.repo.get_user(&id).await? else {
-            return Err(anyhow::anyhow!("User wasn't found."));
+        let id;
+        if let Ok(user) = state.repo.get_user_by_email(&mock_user.email).await {
+            id = user.id();
+        } else {
+            id = state.repo.register_user(mock_user).await?;
+            state.repo.activate_user(&id).await?;
         };
-        state.repo.add_user_to_new_group(mock_user).await
+        match state.repo.get_user(&id).await? {
+            AuthorizedUser::GroupUser(user) => Ok(user),
+            AuthorizedUser::NoGroupUser(user) => state.repo.add_user_to_new_group(user).await,
+        }
     }
     async fn mock_date(state: &AppState, user: &GroupUser) -> anyhow::Result<Date> {
         let mock_date = Date::new("test date");
@@ -281,7 +286,6 @@ mod tests {
     }
     #[actix_web::test]
     async fn test_register() {
-        // start_tracting();
         let pool = get_pool().await;
         let app = test::init_service(App::new().configure(move |cfg: &mut ServiceConfig| {
             MainService::new(pool, EmailClient::new("test", "test", "test"))
@@ -289,7 +293,9 @@ mod tests {
         }))
         .await;
         let mut form = HashMap::new();
-        form.insert("email".to_string(), "test@test.com");
+
+        let email = format!("{}@test.com", uuid::Uuid::new_v4());
+        form.insert("email".to_string(), email.as_str());
         form.insert("password".to_string(), "assword");
         let req = test::TestRequest::post()
             .uri("/register")
