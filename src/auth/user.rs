@@ -77,6 +77,11 @@ pub trait UserRepository {
     /// * `user_id`: User's id.
     async fn get_user(&self, user_id: &Uuid)
         -> anyhow::Result<AuthorizedUser, UserValidationError>;
+
+    async fn get_user_by_email(
+        &self,
+        user_email: &str,
+    ) -> anyhow::Result<AuthorizedUser, UserValidationError>;
 }
 
 #[derive(Error, Debug)]

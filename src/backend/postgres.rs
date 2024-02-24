@@ -244,6 +244,22 @@ impl TryInto<AuthorizedUser> for PgUser {
 }
 #[async_trait]
 impl UserRepository for PgRepo {
+    async fn get_user_by_email(
+        &self,
+        user_email: &str,
+    ) -> Result<AuthorizedUser, UserValidationError> {
+        let expected_user =
+            sqlx::query_as!(PgUser, r#"SELECT * FROM users WHERE email=$1;"#, user_email)
+                .fetch_one(&self.pool)
+                .await
+                .map_err(|_| {
+                    UserValidationError::RegistrationError(anyhow!(
+                        "No user found with email: {:?}",
+                        user_email
+                    ))
+                })?;
+        Ok(expected_user.try_into()?)
+    }
     async fn get_user(&self, user_id: &Uuid) -> Result<AuthorizedUser, UserValidationError> {
         let expected_user =
             sqlx::query_as!(PgUser, r#"SELECT * FROM users WHERE user_id=$1;"#, user_id)
