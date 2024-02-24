@@ -389,40 +389,44 @@ mod test {
     #[tokio::test]
     async fn test_create_user_flow() -> anyhow::Result<()> {
         let repo = setup_repo().await;
-        let test_user = UnRegisteredUser::new("test@unit.com", "assword");
-        repo.register_user(test_user).await?;
+        let test_user = UnRegisteredUser::new("test_create@unit.com", "assword");
+        let id = repo.register_user(test_user).await?;
+        repo.remove_user(&id).await?;
         Ok(())
     }
     #[tokio::test]
     async fn test_authorize_user() -> anyhow::Result<()> {
         let repo = setup_repo().await;
-        let test_user = UnRegisteredUser::new("test@unit.com", "assword");
+        let test_user = UnRegisteredUser::new("test_auth@unit.com", "assword");
         let id = repo.register_user(test_user.clone()).await?;
         let new_u = repo.activate_user(&id).await?;
         assert_eq!(new_u.email, test_user.email);
+        repo.remove_user(&id).await?;
         Ok(())
     }
 
     #[tokio::test]
     async fn test_validate_user() -> anyhow::Result<()> {
         let repo = setup_repo().await;
-        let email = "test@password.com";
+        let email = "test_valid@password.com";
         let password = "assword";
         let test_user = UnRegisteredUser::new(email, password);
         let un_auth = UnAuthorizedUser::new(email, password);
         let id = repo.register_user(test_user.clone()).await?;
         repo.activate_user(&id).await?;
         repo.validate_user(&un_auth).await?;
+        repo.remove_user(&id).await?;
         Ok(())
     }
     #[tokio::test]
-    async fn test_repo() -> anyhow::Result<()> {
+    async fn test_date() -> anyhow::Result<()> {
         let repo = setup_repo().await;
-        let test_user = UnRegisteredUser::new("test@unit.com", "assword");
+        let test_user = UnRegisteredUser::new("test_date@unit.com", "assword");
         let id = repo.register_user(test_user.clone()).await?;
         let no_g_use = repo.activate_user(&id).await?;
         let g = repo.add_user_to_new_group(no_g_use).await?;
         repo.add(Date::new("Test"), g.user_id).await?;
+        repo.remove_user(&id).await?;
         Ok(())
     }
 
@@ -448,6 +452,7 @@ mod test {
         repo.validate_user(&new_u)
             .await
             .expect("User validation failed.");
+        repo.remove_user(&id).await?;
         Ok(())
     }
 }

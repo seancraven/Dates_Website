@@ -100,7 +100,7 @@ mod test {
     async fn test_client_construction() -> anyhow::Result<()> {
         let toml = toml::from_str::<toml::Value>(&fs::read_to_string("Secrets.dev.toml").unwrap())
             .unwrap();
-        let key = toml.get("postmark_api_key").unwrap().as_str().unwrap();
+        let key = toml.get("postmark").unwrap().as_str().unwrap();
         let email_from = toml.get("email_from").unwrap().as_str().unwrap();
         let url = toml.get("url").unwrap().as_str().unwrap();
         let _ = EmailClient::new(key, url, email_from);

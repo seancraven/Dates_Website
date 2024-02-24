@@ -34,7 +34,8 @@ mod tests {
     }
 
     async fn mock_user(state: &AppState) -> anyhow::Result<GroupUser> {
-        let mock_user = UnRegisteredUser::new("integration@test.com", "assword");
+        let mock_user =
+            UnRegisteredUser::new(format!("{}@test.com", uuid::Uuid::new_v4()), "assword");
         let id;
         if let Ok(user) = state.repo.get_user_by_email(&mock_user.email).await {
             id = user.id();
