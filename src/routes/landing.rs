@@ -4,7 +4,7 @@ use std::fs;
 use crate::auth::user::{AuthorizedUser, UnAuthorizedUser, UnRegisteredUser, UserValidationError};
 use crate::backend::postgres::PgRepo;
 use crate::domain::repository::AppState;
-use crate::email::EmailClient;
+use crate::email::{authenticate_by_email, EmailClient};
 use crate::routes::dates_service::render_dates;
 use crate::routes::dates_service::{date_page_inner, dates_service};
 use actix_web::error::{
@@ -44,6 +44,7 @@ impl MainService {
                 .service(register)
                 .service(create_group)
                 .service(search_verification)
+                .service(authenticate_by_email)
                 .service(web::scope("/dates").configure(dates_service)),
         );
     }
@@ -102,7 +103,12 @@ async fn register(
     );
     app_state
         .repo
-        .register_user(u_user)
+        .register_user(u_user.clone())
+        .await
+        .map_err(ErrorInternalServerError)?;
+    app_state
+        .email_client
+        .send_auth_email(&u_user.email)
         .await
         .map_err(ErrorInternalServerError)?;
     Ok(HttpResponse::Ok().body("Check your email for a link to activate your account."))
