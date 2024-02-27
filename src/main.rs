@@ -18,9 +18,11 @@ async fn main(
     #[shuttle_secrets::Secrets] secrets: shuttle_secrets::SecretStore,
 ) -> ShuttleActixWeb<impl FnOnce(&mut ServiceConfig) + Send + Clone + 'static> {
     let email_client = date_rs::email::EmailClient::new(
-        secrets.get("postmark_api_token").unwrap(),
-        secrets.get("url").unwrap(),
-        secrets.get("from_email").unwrap(),
+        secrets
+            .get("postmark_api_token")
+            .expect("Set postmark_api_token"),
+        secrets.get("url").expect("Set url"),
+        secrets.get("from_email").expect("Set from_email"),
     );
     let pool = Pool::<Postgres>::connect(&conn_str)
         .await
