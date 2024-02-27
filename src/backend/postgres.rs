@@ -244,6 +244,17 @@ impl TryInto<AuthorizedUser> for PgUser {
 }
 #[async_trait]
 impl UserRepository for PgRepo {
+    async fn get_unauthorized_user_id(&self, email: &str) -> Option<Uuid> {
+        let id = sqlx::query_scalar!(
+            r#"SELECT user_id FROM users WHERE email=$1 and NOT auth "#,
+            email
+        )
+        .fetch_one(&self.pool)
+        .await
+        .ok()?;
+        Some(id)
+    }
+
     async fn get_user_by_email(
         &self,
         user_email: &str,
