@@ -1,11 +1,17 @@
 use std::fs;
 
+use actix_web::{
+    error::{ErrorInternalServerError, ErrorUnauthorized},
+    get, web, HttpResponse, Result,
+};
 use anyhow::Context;
 // File to manage accepting email_confirmation.
 // I can use this an an excuse to make an email microservice.
 use reqwest::Client;
 use secrecy::{ExposeSecret, Secret};
 use serde::{Deserialize, Serialize};
+
+use crate::domain::repository::AppState;
 
 #[derive(Clone)]
 pub struct EmailClient {
@@ -63,12 +69,30 @@ impl PostMarkEmail {
         from_email: &str,
     ) -> anyhow::Result<PostMarkEmail> {
         Ok(PostMarkEmail {
-            html: render_email_html(&user_email, app_url)?,
+            html: render_email_html(user_email, app_url)?,
             to: String::from(user_email),
             subject: "Date.rs Authentication".into(),
             from: from_email.into(),
         })
     }
+}
+#[get("/authenticate/{email}")]
+pub async fn authenticate_by_email(
+    app_state: web::Data<AppState>,
+    email: web::Path<String>,
+) -> Result<HttpResponse> {
+    let id = app_state
+        .repo
+        .get_unauthorized_user_id(&email)
+        .await
+        .ok_or(ErrorUnauthorized("No user found with this email."))?;
+
+    app_state
+        .repo
+        .activate_user(&id)
+        .await
+        .map_err(ErrorInternalServerError)?;
+    Ok(HttpResponse::Ok().finish())
 }
 
 fn render_email_html(email: &str, app_url: &str) -> anyhow::Result<String> {
@@ -87,6 +111,8 @@ fn render_email_html(email: &str, app_url: &str) -> anyhow::Result<String> {
 }
 #[cfg(test)]
 mod test {
+    use std::fs;
+
     use super::*;
     use toml;
     #[test]
@@ -100,8 +126,8 @@ mod test {
     async fn test_client_construction() -> anyhow::Result<()> {
         let toml = toml::from_str::<toml::Value>(&fs::read_to_string("Secrets.dev.toml").unwrap())
             .unwrap();
-        let key = toml.get("postmark").unwrap().as_str().unwrap();
-        let email_from = toml.get("email_from").unwrap().as_str().unwrap();
+        let key = toml.get("postmark_api_token").unwrap().as_str().unwrap();
+        let email_from = toml.get("from_email").unwrap().as_str().unwrap();
         let url = toml.get("url").unwrap().as_str().unwrap();
         let _ = EmailClient::new(key, url, email_from);
         Ok(())

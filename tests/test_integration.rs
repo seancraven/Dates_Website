@@ -230,14 +230,14 @@ mod tests {
     #[actix_web::test]
     async fn test_login() {
         let pool = get_pool().await;
-        mock_db_user_date().await.unwrap();
+        let (_, user, _) = mock_db_user_date().await.unwrap();
         let app = test::init_service(App::new().configure(move |cfg: &mut ServiceConfig| {
             MainService::new(pool, EmailClient::new("test", "test", "test"))
                 .service_configuration(cfg)
         }))
         .await;
         let mut form = HashMap::new();
-        form.insert("email".to_string(), "integration@test.com");
+        form.insert("email".to_string(), user.email.as_str());
         form.insert("password".to_string(), "assword");
         let req = test::TestRequest::post()
             .uri("/login")
@@ -250,13 +250,14 @@ mod tests {
     #[actix_web::test]
     async fn test_login_bad_password() {
         let pool = get_pool().await;
+        let (_, user, _) = mock_db_user_date().await.unwrap();
         let app = test::init_service(App::new().configure(move |cfg: &mut ServiceConfig| {
             MainService::new(pool, EmailClient::new("test", "test", "test"))
                 .service_configuration(cfg)
         }))
         .await;
         let mut form = HashMap::new();
-        form.insert("email".to_string(), "integration@test.com");
+        form.insert("email".to_string(), user.email.as_str());
         form.insert("password".to_string(), "failword");
         let req = test::TestRequest::post()
             .uri("/login")
