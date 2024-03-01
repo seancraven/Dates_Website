@@ -86,9 +86,15 @@ async fn login(
                 .map_err(ErrorInternalServerError)?;
             Ok(HttpResponse::Ok().body(dates))
         }
-        AuthorizedUser::NoGroupUser(_) => {
-            let body = fs::read_to_string("./pages/user.html")?;
-            Ok(HttpResponse::Ok().body(body))
+        AuthorizedUser::NoGroupUser(u) => {
+            let mut ctx = Context::new();
+            ctx.insert("user_id", &u.user_id);
+            ctx.insert("user_email", &u.email);
+            ctx.insert("method", "post");
+            ctx.insert("uri", &format!("{:?}/create_group", &u.user_id));
+            let template = Tera::one_off(&fs::read_to_string("./pages/user.html")?, &ctx, false)
+                .map_err(ErrorInternalServerError)?;
+            Ok(HttpResponse::Ok().body(template))
         }
     }
 }
@@ -124,8 +130,8 @@ async fn authorize(app_state: Data<AppState>, user_id: Path<Uuid>) -> Result<Htt
     let mut ctx = Context::new();
     ctx.insert("user_id", &user.user_id);
     ctx.insert("user_email", &user.email);
-    ctx.insert("uri", &format!("{:?}/create_group", &user.user_id));
     ctx.insert("method", "post");
+    ctx.insert("uri", &format!("{:?}/create_group", &user.user_id));
     let body = Tera::one_off(&fs::read_to_string("./pages/user.html")?, &ctx, false)
         .map_err(ErrorInternalServerError)?;
     Ok(HttpResponse::Ok().body(body))
