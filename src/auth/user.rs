@@ -143,6 +143,18 @@ impl AuthorizedUser {
             Self::GroupUser(u) => u.user_id,
         }
     }
+    pub fn email(&self) -> &str {
+        match &self {
+            Self::NoGroupUser(u) => &u.email,
+            Self::GroupUser(u) => &u.email,
+        }
+    }
+    pub fn group(&self) -> Option<i32> {
+        match &self {
+            Self::NoGroupUser(_) => None,
+            Self::GroupUser(u) => Some(u.user_group),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]
