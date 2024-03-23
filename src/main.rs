@@ -15,7 +15,7 @@ async fn main(
         local_uri = "postgres://postgres:assword@localhost:5432/postgres"
     )]
     conn_str: String,
-    #[shuttle_secrets::Secrets] secrets: shuttle_secrets::SecretStore,
+    #[shuttle_runtime::Secrets] secrets: shuttle_runtime::SecretStore,
 ) -> ShuttleActixWeb<impl FnOnce(&mut ServiceConfig) + Send + Clone + 'static> {
     let email_client = date_rs::email::EmailClient::new(
         secrets
