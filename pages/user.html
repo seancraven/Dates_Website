@@ -27,14 +27,21 @@
     <div
       class="w-1/2 font-bold flex items-center justify-center bg-teal-lightest font-sans text-2xl mb-4 container mx-auto grid grid-cols-1"
     >
-      <div class="col-span-1">{{user_email}}</div>
-      <form class="grid grid-cols-2" action="{{uri}}" method="{{method}}">
-        <input
-          type="submit"
-          value="Create Group"
-          class="col-span-2 allign-middle p-2 border-2 rounded hover:font-bold border-grey hover:bg-grey"
-        />
+      <div class="col-span-1 align-middle mx-auto">{{user_email}}</div>
+      <form
+        action="{{uri}}"
+        method="{{method}}"
+        class="col-span-1 align-middle p-2 border-2 rounded hover:font-bold border-grey hover:bg-grey mx-auto"
+      >
+        <input type="submit" value="Create Group" />
       </form>
+      {% if user_uri%}
+      <div
+        class="col-span-1 align-middle p-2 border-2 rounded hover:font-bold border-grey hover:bg-grey mx-auto"
+      >
+        <a href="{{user_uri}}">Go to your dates.</a>
+      </div>
+      {% else %} {% endif %}
     </div>
   </body>
 </html>
