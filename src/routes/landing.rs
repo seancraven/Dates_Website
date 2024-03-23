@@ -5,7 +5,6 @@ use crate::auth::user::{AuthorizedUser, UnAuthorizedUser, UnRegisteredUser, User
 use crate::backend::postgres::PgRepo;
 use crate::domain::repository::AppState;
 use crate::email::{authenticate_by_email, EmailClient};
-use crate::routes::dates_service::render_dates;
 use crate::routes::dates_service::{date_page_inner, dates_service};
 use actix_web::error::{
     ErrorForbidden, ErrorInternalServerError, ErrorNotFound, ErrorUnauthorized,
@@ -79,24 +78,20 @@ async fn login(
             _ => ErrorInternalServerError("Server Error."),
         })?;
 
-    match user {
-        AuthorizedUser::GroupUser(u) => {
-            let dates = app_state.repo.get_all(&u.user_id).await;
-            let dates = render_dates(dates, &app_state.cache, &u.user_id)
-                .map_err(ErrorInternalServerError)?;
-            Ok(HttpResponse::Ok().body(dates))
-        }
-        AuthorizedUser::NoGroupUser(u) => {
-            let mut ctx = Context::new();
-            ctx.insert("user_id", &u.user_id);
-            ctx.insert("user_email", &u.email);
-            ctx.insert("method", "post");
-            ctx.insert("uri", &format!("{:?}/create_group", &u.user_id));
-            let template = Tera::one_off(&fs::read_to_string("./pages/user.html")?, &ctx, false)
-                .map_err(ErrorInternalServerError)?;
-            Ok(HttpResponse::Ok().body(template))
-        }
+    Ok(HttpResponse::Ok().body(render_user_page(user)?))
+}
+fn render_user_page(user: AuthorizedUser) -> Result<String> {
+    let mut ctx = Context::new();
+    if let Some(group) = user.group() {
+        ctx.insert("group", &group);
+        ctx.insert("user_uri", &format!("/dates/{:?}", &user.id()));
     }
+    ctx.insert("user_id", &user.id());
+    ctx.insert("user_email", &user.email());
+    ctx.insert("method", "post");
+    ctx.insert("uri", &format!("{:?}/create_group", &user.id()));
+    Tera::one_off(&fs::read_to_string("./pages/user.html")?, &ctx, false)
+        .map_err(ErrorInternalServerError)
 }
 #[post("/register")]
 async fn register(
@@ -127,14 +122,7 @@ async fn authorize(app_state: Data<AppState>, user_id: Path<Uuid>) -> Result<Htt
         .activate_user(&user_id)
         .await
         .map_err(ErrorInternalServerError)?;
-    let mut ctx = Context::new();
-    ctx.insert("user_id", &user.user_id);
-    ctx.insert("user_email", &user.email);
-    ctx.insert("method", "post");
-    ctx.insert("uri", &format!("{:?}/create_group", &user.user_id));
-    let body = Tera::one_off(&fs::read_to_string("./pages/user.html")?, &ctx, false)
-        .map_err(ErrorInternalServerError)?;
-    Ok(HttpResponse::Ok().body(body))
+    Ok(HttpResponse::Ok().body(render_user_page(AuthorizedUser::NoGroupUser(user))?))
 }
 #[post("/{user_id}/create_group")]
 async fn create_group(app_state: Data<AppState>, user_id: Path<Uuid>) -> Result<HttpResponse> {
