@@ -86,6 +86,9 @@ pub trait UserRepository {
 
     /// Get a user that isn't authorized by their email.
     async fn get_unauthorized_user_id(&self, email: &str) -> Option<uuid::Uuid>;
+
+    /// Remove a user from a group.
+    async fn remove_user_from_group(&self, user_id: &Uuid) -> anyhow::Result<()>;
 }
 
 #[derive(Error, Debug)]

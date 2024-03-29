@@ -3,12 +3,6 @@ use anyhow::Context;
 use date_rs::routes::landing::MainService;
 use shuttle_actix_web::ShuttleActixWeb;
 use sqlx::{Pool, Postgres};
-// TODO:
-//  - [x] Make Login Stuff Nicer.
-//  - [x] Add email backend for Authorization and Inviting.
-//  - [x] Change structure of backend.
-//  - [x] Integrate email backend.
-//  - [ ] Figure out how to manage not having a user in the database.
 #[shuttle_runtime::main]
 async fn main(
     #[shuttle_shared_db::Postgres(

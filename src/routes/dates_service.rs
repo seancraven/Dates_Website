@@ -48,13 +48,13 @@ pub async fn date_page_inner(app_state: Arc<AppState>, user_id: Uuid) -> Result<
     if app_state.cache.reset(&user_id).is_err() {
         debug!("Cache doesn't contain {:?}", user_id);
     };
-    Ok(HttpResponse::Ok().body(template_load(
+    Ok(HttpResponse::Ok().body(index_template_load(
         app_state.repo.get_all(&user_id).await,
         &app_state.cache,
         &user_id,
     )?))
 }
-fn template_load(dates: Vec<Date>, cache: &ExpansionCache, user_id: &Uuid) -> Result<String> {
+fn index_template_load(dates: Vec<Date>, cache: &ExpansionCache, user_id: &Uuid) -> Result<String> {
     let mut ctx = Context::new();
     let buttons = render_dates(dates, cache, user_id)?;
     ctx.insert("buttons", &buttons);

@@ -167,8 +167,7 @@ pub trait DateRepository {
         date_id: &'ui Uuid,
         user_id: &'st Uuid,
     ) -> anyhow::Result<()>;
-    /// Return a copy of the repository's contents, sorted by from higest to lowest.
-
+    /// Return a copy of the all the user's dates in a sorted fashion.
     async fn get_all(&self, user_id: &Uuid) -> Vec<Date>;
     /// Update's the repository entry for a given date.
     ///

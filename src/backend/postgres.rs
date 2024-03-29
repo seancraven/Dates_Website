@@ -386,6 +386,15 @@ impl UserRepository for PgRepo {
         .map_err(|_| UserValidationError::RegistrationError(anyhow!("User doesn't exist")))?;
         Ok(NoGroupUser::new(record.user_id, record.email))
     }
+    async fn remove_user_from_group(&self, user_id: &Uuid) -> anyhow::Result<()> {
+        sqlx::query!(
+            r#"UPDATE users SET user_group=NULL WHERE user_id=$1"#,
+            user_id
+        )
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
 }
 #[cfg(test)]
 mod test {
