@@ -25,15 +25,15 @@
       <a href="/dates/{{user_id}}">Dates</a>
     </h1>
     <div
-      class="w-1/2 font-bold flex items-center justify-center bg-teal-lightest font-sans text-2xl mb-4 container mx-auto grid grid-cols-1"
+      class="w-1/2 font-bold items-center justify-center bg-teal-lightest font-sans text-2xl mb-4 container mx-auto grid grid-cols-1"
     >
       <div class="col-span-1 align-middle mx-auto">{{user_email}}</div>
       <form
         action="{{uri}}"
         method="{{method}}"
-        class="col-span-1 align-middle p-2 border-2 rounded hover:font-bold border-grey hover:bg-grey mx-auto"
+        class="grid grid-cols-1 col-span-1 align-middle p-2 border-2 rounded hover:font-bold border-grey hover:bg-grey mx-auto"
       >
-        <input type="submit" value="Create Group" />
+        <input type="submit" value="Create Group" , class="col-span-1"/>
       </form>
       {% if user_uri%}
       <div
@@ -42,6 +42,17 @@
         <a href="{{user_uri}}">Go to your dates.</a>
       </div>
       {% else %} {% endif %}
+      <div
+        class="grid grid-cols-1 col-span-1 align-middle p-2 border-2 rounded hover:font-bold border-grey hover:bg-grey mx-auto"
+      >
+        <form action="{{by_email_uri}}" method="{{by_email_method}}", class="col-span-1, grid grid-cols-1">
+          <label for="email",
+          class ="align-middle,">Join a group by a friend's email:</label>
+          <input type="email" name="email", placeholder="their email", 
+            class="col-span-1 p-2 border-2 rounded border-grey hover:bg-grey"
+          <input type="submit"  , class="col-span-1"/>
+        </form>
+      </div>
     </div>
   </body>
 </html>
