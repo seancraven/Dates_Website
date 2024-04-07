@@ -210,6 +210,22 @@ mod tests {
             StatusCode::FORBIDDEN
         );
     }
+    #[actix_web::test]
+    async fn test_remove_user() {
+        // start_tracting();
+        let (_, user, _) = mock_db_user_date().await.unwrap();
+        let pool = get_pool().await;
+        let app = test::init_service(App::new().configure(move |cfg: &mut ServiceConfig| {
+            MainService::new(pool, EmailClient::new("test", "test", "test"))
+                .service_configuration(cfg)
+        }))
+        .await;
+        let req = test::TestRequest::delete()
+            .uri(&format!("/{}", user.email))
+            .to_request();
+        let resp = test::call_service(&app, req).await.status();
+        assert_eq!(resp, StatusCode::OK);
+    }
 
     #[actix_web::test]
     async fn test_index() {

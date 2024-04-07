@@ -10,7 +10,7 @@ use actix_web::error::{
     ErrorForbidden, ErrorInternalServerError, ErrorNotFound, ErrorUnauthorized,
 };
 use actix_web::middleware::Logger;
-use actix_web::Result;
+use actix_web::{delete, Result};
 use actix_web::{
     get, post,
     web::{self, Data, Path, ServiceConfig},
@@ -45,6 +45,7 @@ impl MainService {
                 .service(create_group)
                 .service(search_verification)
                 .service(authenticate_by_email)
+                .service(remove_user)
                 .service(web::scope("/dates").configure(dates_service)),
         );
     }
@@ -201,6 +202,23 @@ async fn create_group(app_state: Data<AppState>, user_id: Path<Uuid>) -> Result<
         .await
         .map_err(ErrorInternalServerError)?;
     date_page_inner(app_state.into_inner(), group_user.user_id).await
+}
+#[delete("/{user_email}")]
+async fn remove_user(app_state: Data<AppState>, user_email: Path<String>) -> Result<HttpResponse> {
+    let user_id = match app_state.repo.get_user_by_email(&user_email).await {
+        Ok(id) => id.id(),
+        Err(_) => app_state
+            .repo
+            .get_unauthorized_user_id(&user_email)
+            .await
+            .ok_or(ErrorInternalServerError("Unexpected failure."))?,
+    };
+    app_state
+        .repo
+        .remove_user(&user_id)
+        .await
+        .map_err(ErrorInternalServerError)?;
+    Ok(HttpResponse::Ok().finish())
 }
 
 #[get("googleb0081feae6701197.html")]
