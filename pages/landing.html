@@ -1,25 +1,52 @@
 <!doctype html>
-<html lang="en">
-<meta charset="utf-8" />
-
-<head>
-  <script src="https://unpkg.com/htmx.org@1.9.9"
-    integrity="sha384-QFjmbokDn2DjBjq+fM+8LUIVrAgqcNW2s0PjAxHETgRn9l4fvX31ZxDxvwQnyMOX"
-    crossorigin="anonymous"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <title>Date.rs</title>
-  <meta name="google-site-verification" content="iQ5iaJ8KAop21SIlNS__EofP2T-MaPy_PhV2Zjmzytw" />
-</head>
-
-<body>
-  <div class="flex flex-col justify-center items-center h-screen w-screen bg-grey-lighter">
-    <button
-      class="text-center font-bold justify-center hover:bg-cyan-50 font-sans text-2xl mb-4 cols-span-1 p-2 rounded border-2">
-      <h1 id="content">
-        <a href="dates/64308658-e043-4afd-b207-cef65569ea33">Dates.rs</a>
-      </h1>
-    </button>
-  </div>
-</body>
-
+<html lang="en" id="page">
+  <meta charset="utf-8" />
+  <head>
+    <script
+      src="https://unpkg.com/htmx.org@1.9.9"
+      integrity="sha384-QFjmbokDn2DjBjq+fM+8LUIVrAgqcNW2s0PjAxHETgRn9l4fvX31ZxDxvwQnyMOX"
+      crossorigin="anonymous"
+    ></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Date.rs</title>
+    <meta
+      name="google-site-verification"
+      content="iQ5iaJ8KAop21SIlNS__EofP2T-MaPy_PhV2Zjmzytw"
+    />
+  </head>
+  <body>
+    <div
+      class="flex flex-col justify-center items-center h-screen w-screen bg-grey-lighter"
+    >
+      <h1 id="content" , class="p-2 text-xl font-bold">Dates.rs</h1>
+      <form id="user" action="login" method="post">
+        <div class="grid grid-cols-2">
+          <input
+            placeholder="email"
+            type="text"
+            name="email"
+            class="col-span-2 p-2 border-2 rounded border-grey hover:bg-grey"
+          />
+          <input
+            placeholder="password"
+            type="password"
+            name="password"
+            class="col-span-2 p-2 border-2 rounded border-grey hover:bg-grey"
+          />
+          <input
+            type="submit"
+            value="Login"
+            class="col-span-1 allign-middle p-2 border-2 rounded hover:font-bold border-grey hover:bg-grey"
+          />
+          <input
+            type="submit"
+            value="Register"
+            class="col-span-1 allign-middle p-2 border-2 rounded hover:font-bold border-grey hover:bg-grey"
+            formaction="/register"
+            formmethod="post"
+          />
+        </div>
+      </form>
+    </div>
+  </body>
 </html>

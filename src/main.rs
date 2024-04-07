@@ -1,30 +1,29 @@
-use actix_web::{web, web::ServiceConfig};
-use dates::backend::postgres::PgRepo;
-use dates::domain::repository::AppState;
-use dates::routes::dates_service::{add_new_date, dates_service};
-use dates::routes::landing::{create_user, dummy_login, landing, search_verification};
+use actix_web::web::ServiceConfig;
+use anyhow::Context;
+use date_rs::routes::landing::MainService;
 use shuttle_actix_web::ShuttleActixWeb;
-use sqlx::PgPool;
+use sqlx::{Pool, Postgres};
 #[shuttle_runtime::main]
 async fn main(
     #[shuttle_shared_db::Postgres(
         local_uri = "postgres://postgres:assword@localhost:5432/postgres"
     )]
-    pool: PgPool,
+    conn_str: String,
+    #[shuttle_runtime::Secrets] secrets: shuttle_runtime::SecretStore,
 ) -> ShuttleActixWeb<impl FnOnce(&mut ServiceConfig) + Send + Clone + 'static> {
+    let email_client = date_rs::email::EmailClient::new(
+        secrets
+            .get("postmark_api_token")
+            .expect("Set postmark_api_token"),
+        secrets.get("url").expect("Set url"),
+        secrets.get("from_email").expect("Set from_email"),
+    );
+    let pool = Pool::<Postgres>::connect(&conn_str)
+        .await
+        .context("Db connection failed")?;
     sqlx::migrate!().run(&pool).await.unwrap();
     let config = move |cfg: &mut ServiceConfig| {
-        cfg.app_data(AppState::new_in_web_data(Box::new(PgRepo { pool })))
-            .service(add_new_date)
-            .service(landing)
-            .service(dummy_login)
-            .service(create_user)
-            .service(search_verification)
-            .service(
-                web::scope("/dates")
-                    .wrap(actix_web::middleware::Logger::default())
-                    .configure(dates_service),
-            );
+        MainService::new(pool, email_client.clone()).service_configuration(cfg)
     };
     Ok(config.into())
 }

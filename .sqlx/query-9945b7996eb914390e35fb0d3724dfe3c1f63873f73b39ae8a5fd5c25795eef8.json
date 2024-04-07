@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE users SET user_group=$3 WHERE user_id=$1 and email=$2;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9945b7996eb914390e35fb0d3724dfe3c1f63873f73b39ae8a5fd5c25795eef8"
+}

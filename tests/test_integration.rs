@@ -2,47 +2,59 @@
 mod tests {
     use actix_web::http::StatusCode;
     use actix_web::test;
-    use actix_web::web;
+    use actix_web::web::{self, ServiceConfig};
     use actix_web::{web::Data, App};
     use chrono::{NaiveDate, NaiveTime};
-    use dates::auth::user::GroupUser;
-    use dates::auth::user::NoGroupUser;
-    use dates::backend::postgres::PgRepo;
-    use dates::domain::dates::Date;
-    use dates::domain::repository::AppState;
-    use dates::routes::dates_service::index;
-    use dates::routes::dates_service::{add_new_date, update_description};
+    use date_rs::auth::user::AuthorizedUser;
+    use date_rs::auth::user::{GroupUser, UnRegisteredUser};
+    use date_rs::backend::postgres::PgRepo;
+    use date_rs::domain::dates::Date;
+    use date_rs::domain::repository::AppState;
+    use date_rs::email::EmailClient;
+    use date_rs::routes::landing::MainService;
     use sqlx::PgPool;
     use std::collections::HashMap;
     use uuid::Uuid;
-    fn start_tracing() {
-        let _ = tracing_subscriber::fmt()
-            .with_max_level(tracing::Level::DEBUG)
-            .try_init();
+    // TODO: Make tabular. At the moment this is much to long.
+    //
+    //
+    async fn get_pool() -> PgPool {
+        PgPool::connect("postgres://postgres:assword@localhost:5432/postgres")
+            .await
+            .unwrap()
     }
     async fn mock_db() -> web::Data<AppState> {
-        let pool = PgPool::connect("postgres://postgres:assword@localhost:5432/postgres")
-            .await
-            .unwrap();
-        let state = AppState::new(Box::new(PgRepo { pool }));
+        let state = AppState::new(
+            Box::new(PgRepo {
+                pool: get_pool().await,
+            }),
+            EmailClient::new("test", "test", "test"),
+        );
         Data::new(state)
     }
 
     async fn mock_user(state: &AppState) -> anyhow::Result<GroupUser> {
-        let mock_user = NoGroupUser {
-            id: Uuid::new_v4(),
-            username: String::from("integration test"),
-            email: String::from("integration@test.com"),
+        let mock_user =
+            UnRegisteredUser::new(format!("{}@test.com", uuid::Uuid::new_v4()), "assword");
+        let id;
+        if let Ok(user) = state.repo.get_user_by_email(&mock_user.email).await {
+            id = user.id();
+        } else {
+            id = state.repo.register_user(mock_user).await?;
+            state.repo.activate_user(&id).await?;
         };
-        state.repo.create_user_and_group(mock_user).await
+        match state.repo.get_user(&id).await? {
+            AuthorizedUser::GroupUser(user) => Ok(user),
+            AuthorizedUser::NoGroupUser(user) => state.repo.add_user_to_new_group(user).await,
+        }
     }
     async fn mock_date(state: &AppState, user: &GroupUser) -> anyhow::Result<Date> {
         let mock_date = Date::new("test date");
 
-        state.repo.add(mock_date.clone(), user.id).await?;
+        state.repo.add(mock_date.clone(), user.user_id).await?;
         state
             .repo
-            .get(&mock_date.id, &user.id)
+            .get(&mock_date.id, &user.user_id)
             .await
             .ok_or(anyhow::anyhow!("Date wans't found"))
     }
@@ -71,22 +83,33 @@ mod tests {
     }
     #[actix_web::test]
     async fn test_update_description_success() {
-        start_tracing();
-        let (state, user, date) = mock_db_user_date().await.unwrap();
-        let app = test::init_service(App::new().app_data(state).service(update_description)).await;
+        // start_tracting();
+        let (_, user, date) = mock_db_user_date().await.unwrap();
+
+        let pool = get_pool().await;
+        let app = test::init_service(App::new().configure(move |cfg: &mut ServiceConfig| {
+            MainService::new(pool, EmailClient::new("test", "test", "test"))
+                .service_configuration(cfg)
+        }))
+        .await;
         let form_data = get_mock_form();
-        let uri = format!("/{}/{}/description", user.id, date.id);
+        let uri = format!("/dates/{}/{}/description", user.user_id, date.id);
         let req = test::TestRequest::post().uri(&uri).set_form(form_data);
         let resp = test::call_service(&app, req.to_request()).await;
         assert!(resp.status().is_success());
     }
     #[actix_web::test]
     async fn test_update_description_contains_update() {
-        start_tracing();
-        let (state, user, date) = mock_db_user_date().await.unwrap();
-        let app = test::init_service(App::new().app_data(state).service(update_description)).await;
+        // start_tracting();
+        let (_, user, date) = mock_db_user_date().await.unwrap();
+        let pool = get_pool().await;
+        let app = test::init_service(App::new().configure(move |cfg: &mut ServiceConfig| {
+            MainService::new(pool, EmailClient::new("test", "test", "test"))
+                .service_configuration(cfg)
+        }))
+        .await;
         let form_data = get_mock_form();
-        let uri = format!("/{}/{}/description", user.id, date.id);
+        let uri = format!("/dates/{}/{}/description", user.user_id, date.id);
         let req = test::TestRequest::post().uri(&uri).set_form(form_data);
         let resp = test::call_and_read_body(&app, req.to_request()).await;
         let text = String::from_utf8(resp.to_vec()).unwrap();
@@ -94,12 +117,17 @@ mod tests {
     }
     #[actix_web::test]
     async fn test_update_description_fails_with_empty_date() {
-        start_tracing();
-        let (state, user, date) = mock_db_user_date().await.unwrap();
-        let app = test::init_service(App::new().app_data(state).service(update_description)).await;
+        // start_tracting();
+        let (_, user, date) = mock_db_user_date().await.unwrap();
+        let pool = get_pool().await;
+        let app = test::init_service(App::new().configure(move |cfg: &mut ServiceConfig| {
+            MainService::new(pool, EmailClient::new("test", "test", "test"))
+                .service_configuration(cfg)
+        }))
+        .await;
         let mut form_data = get_mock_form();
         form_data.insert("day".to_string(), "".to_string());
-        let uri = format!("/{}/{}/description", user.id, date.id);
+        let uri = format!("/dates/{}/{}/description", user.user_id, date.id);
         let req = test::TestRequest::post().uri(&uri).set_form(form_data);
         assert!(test::call_service(&app, req.to_request())
             .await
@@ -108,12 +136,17 @@ mod tests {
     }
     #[actix_web::test]
     async fn test_update_description_fails_with_empty_time() {
-        start_tracing();
-        let (state, user, date) = mock_db_user_date().await.unwrap();
-        let app = test::init_service(App::new().app_data(state).service(update_description)).await;
+        // start_tracting();
+        let (_, user, date) = mock_db_user_date().await.unwrap();
+        let pool = get_pool().await;
+        let app = test::init_service(App::new().configure(move |cfg: &mut ServiceConfig| {
+            MainService::new(pool, EmailClient::new("test", "test", "test"))
+                .service_configuration(cfg)
+        }))
+        .await;
         let mut form_data = get_mock_form();
         form_data.insert("time".to_string(), "".to_string());
-        let uri = format!("/{}/{}/description", user.id, date.id);
+        let uri = format!("/dates/{}/{}/description", user.user_id, date.id);
         let req = test::TestRequest::post().uri(&uri).set_form(form_data);
         assert!(test::call_service(&app, req.to_request())
             .await
@@ -122,12 +155,17 @@ mod tests {
     }
     #[actix_web::test]
     async fn test_add_date_accept() {
-        start_tracing();
-        let (state, user, _) = mock_db_user_date().await.unwrap();
-        let app = test::init_service(App::new().app_data(state).service(add_new_date)).await;
+        // start_tracting();
+        let (_, user, _) = mock_db_user_date().await.unwrap();
+        let pool = get_pool().await;
+        let app = test::init_service(App::new().configure(move |cfg: &mut ServiceConfig| {
+            MainService::new(pool, EmailClient::new("test", "test", "test"))
+                .service_configuration(cfg)
+        }))
+        .await;
         let mut form = HashMap::new();
         form.insert("name".to_string(), "Test".to_string());
-        let uri = format!("/{}/new_date", user.id);
+        let uri = format!("/dates/{}/new_date", user.user_id);
         let req = test::TestRequest::post().uri(&uri).set_form(form);
         assert!(test::call_service(&app, req.to_request())
             .await
@@ -136,10 +174,15 @@ mod tests {
     }
     #[actix_web::test]
     async fn test_add_date_fail() {
-        start_tracing();
-        let state = mock_db().await;
-        let app = test::init_service(App::new().app_data(state).service(add_new_date)).await;
-        let uri = format!("/{}/new_date", Uuid::new_v4());
+        // start_tracting();
+        mock_db_user_date().await.unwrap();
+        let pool = get_pool().await;
+        let app = test::init_service(App::new().configure(move |cfg: &mut ServiceConfig| {
+            MainService::new(pool, EmailClient::new("test", "test", "test"))
+                .service_configuration(cfg)
+        }))
+        .await;
+        let uri = format!("/dates/{}/new_date", Uuid::new_v4());
         let mut form = HashMap::new();
         form.insert("name".to_string(), "Test".to_string());
         let req = test::TestRequest::post().uri(&uri).set_form(form);
@@ -150,26 +193,131 @@ mod tests {
     }
     #[actix_web::test]
     async fn test_add_date_forbidden() {
-        start_tracing();
-        let (state, user, _) = mock_db_user_date().await.unwrap();
-        let app = test::init_service(App::new().app_data(state).service(add_new_date)).await;
+        // start_tracting();
+        let (_, user, _) = mock_db_user_date().await.unwrap();
+        let pool = get_pool().await;
+        let app = test::init_service(App::new().configure(move |cfg: &mut ServiceConfig| {
+            MainService::new(pool, EmailClient::new("test", "test", "test"))
+                .service_configuration(cfg)
+        }))
+        .await;
         let mut form = HashMap::new();
         form.insert("name".to_string(), "".to_string());
-        let uri = format!("/{}/new_date", user.id);
+        let uri = format!("/dates/{}/new_date", user.user_id);
         let req = test::TestRequest::post().uri(&uri).set_form(form);
         assert_eq!(
             test::call_service(&app, req.to_request()).await.status(),
             StatusCode::FORBIDDEN
         );
     }
+    #[actix_web::test]
+    async fn test_remove_user() {
+        // start_tracting();
+        let (_, user, _) = mock_db_user_date().await.unwrap();
+        let pool = get_pool().await;
+        let app = test::init_service(App::new().configure(move |cfg: &mut ServiceConfig| {
+            MainService::new(pool, EmailClient::new("test", "test", "test"))
+                .service_configuration(cfg)
+        }))
+        .await;
+        let req = test::TestRequest::delete()
+            .uri(&format!("/{}", user.email))
+            .to_request();
+        let resp = test::call_service(&app, req).await.status();
+        assert_eq!(resp, StatusCode::OK);
+    }
 
     #[actix_web::test]
     async fn test_index() {
-        start_tracing();
-        let (state, user, _) = mock_db_user_date().await.unwrap();
-        let app = test::init_service(App::new().app_data(state).service(index)).await;
+        // start_tracting();
+        let (_, user, _) = mock_db_user_date().await.unwrap();
+        let pool = get_pool().await;
+        let app = test::init_service(App::new().configure(move |cfg: &mut ServiceConfig| {
+            MainService::new(pool, EmailClient::new("test", "test", "test"))
+                .service_configuration(cfg)
+        }))
+        .await;
         let req = test::TestRequest::get()
-            .uri(&format!("/{}", user.id))
+            .uri(&format!("/dates/{}", user.user_id))
+            .to_request();
+        let resp = test::call_service(&app, req).await.status();
+        assert_eq!(resp, StatusCode::OK);
+    }
+    #[actix_web::test]
+    async fn test_login() {
+        let pool = get_pool().await;
+        let (_, user, _) = mock_db_user_date().await.unwrap();
+        let app = test::init_service(App::new().configure(move |cfg: &mut ServiceConfig| {
+            MainService::new(pool, EmailClient::new("test", "test", "test"))
+                .service_configuration(cfg)
+        }))
+        .await;
+        let mut form = HashMap::new();
+        form.insert("email".to_string(), user.email.as_str());
+        form.insert("password".to_string(), "assword");
+        let req = test::TestRequest::post()
+            .uri("/login")
+            .set_form(&form)
+            .to_request();
+        tracing::info!("Sending request.");
+        let resp = test::call_service(&app, req).await.status();
+        assert_eq!(resp, StatusCode::OK);
+    }
+    #[actix_web::test]
+    async fn test_login_bad_password() {
+        let pool = get_pool().await;
+        let (_, user, _) = mock_db_user_date().await.unwrap();
+        let app = test::init_service(App::new().configure(move |cfg: &mut ServiceConfig| {
+            MainService::new(pool, EmailClient::new("test", "test", "test"))
+                .service_configuration(cfg)
+        }))
+        .await;
+        let mut form = HashMap::new();
+        form.insert("email".to_string(), user.email.as_str());
+        form.insert("password".to_string(), "failword");
+        let req = test::TestRequest::post()
+            .uri("/login")
+            .set_form(&form)
+            .to_request();
+        tracing::info!("Sending request.");
+        let resp = test::call_service(&app, req).await.status();
+        assert_eq!(resp, StatusCode::UNAUTHORIZED);
+    }
+    #[actix_web::test]
+    async fn test_login_bad_email() {
+        let pool = get_pool().await;
+        let app = test::init_service(App::new().configure(move |cfg: &mut ServiceConfig| {
+            MainService::new(pool, EmailClient::new("test", "test", "test"))
+                .service_configuration(cfg)
+        }))
+        .await;
+        let mut form = HashMap::new();
+        form.insert("email".to_string(), "doesnt@exist.com");
+        form.insert("password".to_string(), "failword");
+        let req = test::TestRequest::post()
+            .uri("/login")
+            .set_form(&form)
+            .to_request();
+        tracing::info!("Sending request.");
+        let resp = test::call_service(&app, req).await.status();
+        assert_eq!(resp, StatusCode::NOT_FOUND);
+    }
+    #[actix_web::test]
+    async fn test_register() {
+        let pool = get_pool().await;
+        let app = test::init_service(App::new().configure(move |cfg: &mut ServiceConfig| {
+            MainService::new(pool, EmailClient::new("test", "test", "test"))
+                .service_configuration(cfg)
+        }))
+        .await;
+        let mut form = HashMap::new();
+
+        let email = format!("{}@test.com", uuid::Uuid::new_v4());
+        form.insert("email".to_string(), email.as_str());
+        form.insert("password".to_string(), "assword");
+        let req = test::TestRequest::post()
+            .uri("/register")
+            .set_form(&form)
             .to_request();
         let resp = test::call_service(&app, req).await.status();
         assert_eq!(resp, StatusCode::OK);
